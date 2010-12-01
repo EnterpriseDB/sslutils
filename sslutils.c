@@ -15,6 +15,8 @@ PG_MODULE_MAGIC;
 
 extern Datum openssl_rsa_generate_key(PG_FUNCTION_ARGS);
 
+PG_FUNCTION_INFO_V1(openssl_rsa_generate_key);
+
 /* Report an error within OpenSSL. */
 static void
 report_openssl_error(char *where)
@@ -33,6 +35,7 @@ report_openssl_error(char *where)
 Datum
 openssl_rsa_generate_key(PG_FUNCTION_ARGS)
 {
+	int			bits = PG_GETARG_INT32(0);
 	RSA		   *rsa = NULL;
 	BIO		   *bio = NULL;
 	char	   *err = NULL;
@@ -40,8 +43,18 @@ openssl_rsa_generate_key(PG_FUNCTION_ARGS)
 	long		len;
 	text	   *res = NULL;
 
+	/*
+	 * Don't allow too many bits.  It takes a long time, and since
+	 * RSA_generate_key() is an external library function, it's not
+	 * interruptible.
+	 */
+	if (bits > 8192)
+		ereport(ERROR,
+				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+				 errmsg("maximum number of bits is 8192")));
+
 	/* Generate key. */
-	rsa = RSA_generate_key(1024, 65537, NULL, NULL);
+	rsa = RSA_generate_key(bits, 65537, NULL, NULL);
 	if (!rsa)
 	{
 		err = "RSA_generate_key";
