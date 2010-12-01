@@ -2,3 +2,8 @@ CREATE OR REPLACE FUNCTION openssl_rsa_generate_key(integer)
 RETURNS text
 AS 'MODULE_PATHNAME', 'openssl_rsa_generate_key'
 LANGUAGE C IMMUTABLE STRICT;
+
+CREATE OR REPLACE FUNCTION openssl_rsa_key_to_csr(text, text)
+RETURNS text
+AS 'MODULE_PATHNAME', 'openssl_rsa_key_to_csr'
+LANGUAGE C IMMUTABLE STRICT;
