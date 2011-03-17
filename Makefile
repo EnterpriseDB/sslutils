@@ -1,7 +1,8 @@
 MODULE_big = sslutils
 OBJS = sslutils.o
-DATA_built = sslutils.sql
+DATA_built = sslutils.sql uninstall_sslutils.sql
 DATA =
+SHLIB_LINK += -lcrypto -lssl
 
 ifdef USE_PGXS
 PG_CONFIG = pg_config
