@@ -1,0 +1,139 @@
+<?xml version="1.0"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003" DefaultTargets="all">
+
+  <Choose>
+    <When Condition="'$(USE_PGXS)'=='1'">
+      <ItemGroup>
+        <ClCommand Include="/I$(PGPATH)\include" />
+        <ClCommand Include="/I$(PGPATH)\include\server" />
+        <ClCommand Include="/I$(PGPATH)\include\server\port\win32" />
+        <ClCommand Include="/I$(PGPATH)\include\server\port\win32_msvc" />
+        <ClCommand Include="/I$(PGPATH)\include\server\port" />
+        <ClCommand Include="/I$(OPENSSLPATH)\include" />
+      </ItemGroup>
+
+      <PropertyGroup>
+        <TARGETS>sslutils;sslutils-sql;install</TARGETS>
+      </PropertyGroup>
+
+      <!-- Setup for Debug or Release -->
+      <Choose>
+        <When Condition="'$(DEBUG)'=='1'">
+          <PropertyGroup>
+            <XTRA_CFLAGS>/Od /MDd /Zi /D "DEBUG=1" /D "_DEBUG"</XTRA_CFLAGS>
+            <XTRA_LDFLAGS>/DEBUG /defaultlib:$(PGPATH)\lib\postgres.lib /defaultlib:$(OPENSSLPATH)\lib\libeay32.lib  /defaultlib:$(OPENSSLPATH)\lib\ssleay32.lib</XTRA_LDFLAGS>
+          </PropertyGroup>
+        </When>
+        <Otherwise>
+          <PropertyGroup>
+	    <DEBUG>0</DEBUG>
+            <XTRA_CFLAGS>/Ox /MD /GF</XTRA_CFLAGS>
+            <XTRA_LDFLAGS>/defaultlib:$(PGPATH)\lib\postgres.lib /defaultlib:$(OPENSSLPATH)\lib\libeay32.lib  /defaultlib:$(OPENSSLPATH)\lib\ssleay32.lib</XTRA_LDFLAGS>
+          </PropertyGroup>
+        </Otherwise>
+      </Choose>
+    </When>
+    <Otherwise>
+      <ItemGroup>
+        <ClCommand Include="/I$(PGPATH)\src\include" />
+        <ClCommand Include="/I$(PGPATH)\src\include\port\win32" />
+        <ClCommand Include="/I$(PGPATH)\src\include\port\win32_msvc" />
+        <ClCommand Include="/I$(PGPATH)\src\port" />
+        <ClCommand Include="/I$(OPENSSLPATH)\include" />
+      </ItemGroup>
+
+      <PropertyGroup>
+        <TARGETS>sslutils;sslutils-sql;install;clean</TARGETS>
+      </PropertyGroup>
+
+      <!-- Setup for Debug or Release -->
+      <Choose>
+        <When Condition="'$(DEBUG)'=='1'">
+          <PropertyGroup>
+            <XTRA_CFLAGS>/Od /MDd /Zi /D "DEBUG=1" /D "_DEBUG"</XTRA_CFLAGS>
+            <XTRA_LDFLAGS>/DEBUG /defaultlib:$(PGPATH)\Debug\postgres\postgres.lib /defaultlib:$(OPENSSLPATH)\lib\libeay32.lib  /defaultlib:$(OPENSSLPATH)\lib\ssleay32.lib</XTRA_LDFLAGS>
+          </PropertyGroup>
+        </When>
+        <Otherwise>
+          <PropertyGroup>
+	    <DEBUG>0</DEBUG>
+            <XTRA_CFLAGS>/Ox /MD /GF</XTRA_CFLAGS>
+            <XTRA_LDFLAGS>/defaultlib:$(PGPATH)\Release\postgres\postgres.lib /defaultlib:$(OPENSSLPATH)\lib\libeay32.lib  /defaultlib:$(OPENSSLPATH)\lib\ssleay32.lib</XTRA_LDFLAGS>
+          </PropertyGroup>
+        </Otherwise>
+      </Choose>
+    </Otherwise>
+  </Choose>
+  <Choose>
+    <When Condition="'$(ARCH)'=='x64'">
+      <PropertyGroup>
+        <XTRA_ARCH_CFLAGS></XTRA_ARCH_CFLAGS>
+        <XTRA_ARCH_LDFLAGS>/MACHINE:X64</XTRA_ARCH_LDFLAGS>
+      </PropertyGroup>
+    </When>
+    <Otherwise>
+      <PropertyGroup>
+        <XTRA_ARCH_CFLAGS>/D _USE_32BIT_TIME_T</XTRA_ARCH_CFLAGS>
+      </PropertyGroup>
+    </Otherwise>
+  </Choose>
+
+  <Target Name="all" DependsOnTargets="$(TARGETS)" />
+
+  <PropertyGroup>
+    <!-- Compiler flags -->
+    <CFLAGS>/nologo /TC /LD $(XTRA_CFLAGS) /D UNSAFE_STAT_OK /D "WIN32" /D "__WIN32__" $(XTRA_ARCH_CFLAGS) /D "_CRT_SECURE_NO_DEPRECATE" /D "_CRT_NONSTDC_NO_DEPRECATE" /D "_WINDLL" /D "_MBCS"</CFLAGS>
+
+    <!-- Linker flags -->
+    <LDFLAGS>/DLL $(XTRA_LDFLAGS) $(XTRA_ARCH_LDFLAGS) /defaultlib:user32 /defaultlib:netapi32 /defaultlib:advapi32 /defaultlib:shell32 /defaultlib:ws2_32 /defaultlib:Secur32.lib</LDFLAGS>
+  </PropertyGroup>
+
+
+  <!-- sslutils -->
+  <ItemGroup>
+    <TargetInfoSrc Include="sslutils.c" />
+  </ItemGroup>
+
+
+  <Target Name="sslutils" Inputs="@(TargetInfoSrc)" Outputs="sslutils.dll">
+    <Message Text="Building sslutils.dll" />
+    <Message Text="Building Debug version: $(DEBUG)" />
+    <WriteLinesToFile File="flist" Lines="@(ClCommand)" Overwrite="true" />
+    <WriteLinesToFile File="flist" Lines="@(TargetInfoSrc)" Overwrite="false" />
+    <Exec Command="cl $(CFLAGS) @flist /link /def:sslutils.def $(LDFLAGS) /OUT:sslutils.dll /IMPLIB:sslutils.lib" />
+  </Target>
+
+  <Target Name="sslutils-sql">
+    <Message Text="Creating sslutils.sql" />
+    <Exec Command="copy /Y sslutils.sql.in sslutils.sql"/>
+    <Message Text="Creating uninstall_sslutils.sql" />
+    <Exec Command="copy /Y uninstall_sslutils.sql.in uninstall_sslutils.sql"/>
+  </Target>
+
+  <Target Name="install">
+    <Message Text="Copying the sslutils.dll"/>
+    <Exec command="copy /y sslutils.dll &quot;$(PGLIBPATH)\&quot;"/>
+    <Message Text="Copying the sslutils.lib"/>
+    <Exec command="copy /y sslutils.lib &quot;$(PGLIBPATH)\&quot;"/>
+    <Message Text="Copying the sslutils.sql"/>
+    <Exec command="copy /y sslutils.sql &quot;$(PGSHAREPATH)\contrib\&quot;"/>
+    <Message Text="Copying the uninstall_sslutils.sql"/>
+    <Exec command="copy /y uninstall_sslutils.sql &quot;$(PGSHAREPATH)\contrib\&quot;"/>
+  </Target>
+
+  <Target Name="clean">
+    <Delete Files="sslutils.sql" />
+    <Delete Files="uninstall_sslutils.sql" />
+    <Delete Files="sslutils.dll" />
+    <Delete Files="sslutils.exp" />
+    <Delete Files="sslutils.lib" />
+    <Delete Files="sslutils.dll.manifest" />
+    <Delete Files="flist" />
+    <Delete Files="vc90.pdb" />
+    <Delete Files="sslutils.obj" />
+    <Delete Files="sslutils.pdb" />
+    <Delete Files="sslutils.ilk" />
+  </Target>
+
+</Project>
+

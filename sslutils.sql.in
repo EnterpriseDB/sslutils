@@ -1,6 +1,6 @@
 CREATE OR REPLACE FUNCTION openssl_rsa_generate_key(integer)
 RETURNS text
-AS 'MODULE_PATHNAME', 'openssl_rsa_generate_key'
+AS '$libdir/sslutils', 'openssl_rsa_generate_key'
 LANGUAGE C IMMUTABLE STRICT;
 COMMENT ON FUNCTION openssl_rsa_generate_key(integer) IS 'Generates the RSA Private Key.
 -- Parameter:
@@ -8,7 +8,7 @@ COMMENT ON FUNCTION openssl_rsa_generate_key(integer) IS 'Generates the RSA Priv
 
 CREATE OR REPLACE FUNCTION openssl_rsa_key_to_csr(text, text, text, text, text, text, text)
 RETURNS text
-AS 'MODULE_PATHNAME', 'openssl_rsa_key_to_csr'
+AS '$libdir/sslutils', 'openssl_rsa_key_to_csr'
 LANGUAGE C IMMUTABLE STRICT;
 COMMENT ON FUNCTION openssl_rsa_key_to_csr(text, text, text, text, text, text, text) IS 'Generates the Certificate Signing Request (CSR).
 -- Parameters:
@@ -22,7 +22,7 @@ COMMENT ON FUNCTION openssl_rsa_key_to_csr(text, text, text, text, text, text, t
 
 CREATE OR REPLACE FUNCTION openssl_csr_to_crt(text, text, text)
 RETURNS text
-AS 'MODULE_PATHNAME', 'openssl_csr_to_crt'
+AS '$libdir/sslutils', 'openssl_csr_to_crt'
 LANGUAGE C IMMUTABLE;
 COMMENT ON FUNCTION openssl_csr_to_crt(text, text, text) IS 'Generates the CA/self signed certificate.
 -- Parameters:
