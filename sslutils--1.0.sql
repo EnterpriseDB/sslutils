@@ -2,10 +2,9 @@ CREATE OR REPLACE FUNCTION openssl_rsa_generate_key(integer)
 RETURNS text
 AS 'MODULE_PATHNAME', 'openssl_rsa_generate_key'
 LANGUAGE C IMMUTABLE STRICT;
-COMMENT ON FUNCTION  openssl_rsa_generate_key(integer) IS 'Generates the RSA Private Key.
+COMMENT ON FUNCTION openssl_rsa_generate_key(integer) IS 'Generates the RSA Private Key.
 -- Parameter:
 -- param1 : Number of bits.';
-ALTER FUNCTION openssl_rsa_generate_key(integer) OWNER TO pem_agent;
 
 CREATE OR REPLACE FUNCTION openssl_rsa_key_to_csr(text, text, text, text, text, text, text)
 RETURNS text
@@ -20,7 +19,6 @@ COMMENT ON FUNCTION openssl_rsa_key_to_csr(text, text, text, text, text, text, t
 -- param5 : L or Location (City)
 -- param6 : OU or Organization Unit
 -- param7 : email.';
-ALTER FUNCTION openssl_rsa_key_to_csr(text, text, text, text, text, text, text) OWNER TO pem_agent;
 
 CREATE OR REPLACE FUNCTION openssl_csr_to_crt(text, text, text)
 RETURNS text
@@ -28,8 +26,6 @@ AS 'MODULE_PATHNAME', 'openssl_csr_to_crt'
 LANGUAGE C IMMUTABLE;
 COMMENT ON FUNCTION openssl_csr_to_crt(text, text, text) IS 'Generates the CA/self signed certificate.
 -- Parameters:
--- param1 : csr or certificate signing request 
+-- param1 : csr or certificate signing request
 -- param2 : Path to CA certificate OR NULL If CA self signed certificate is required.
--- param3 : Path to CA private key OR Path to self private key, If param2 is NULL.'; 
-
-ALTER FUNCTION openssl_csr_to_crt(text, text, text) OWNER TO pem_agent;
+-- param3 : Path to CA private key OR Path to self private key, If param2 is NULL.';

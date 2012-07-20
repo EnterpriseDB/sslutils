@@ -1,0 +1,4 @@
+comment = 'functions to generate ssl certificate on the PostgreSQL/Postgres Plus Advanced Server used by the Postgres Enterprise Manager Server & Agents for communication'
+module_pathname = '$libdir/sslutils'
+superuser = true
+relocatable = false
