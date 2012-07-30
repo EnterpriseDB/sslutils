@@ -24,10 +24,12 @@ extern void _PG_init(void);
 extern Datum openssl_rsa_generate_key(PG_FUNCTION_ARGS);
 extern Datum openssl_rsa_key_to_csr(PG_FUNCTION_ARGS);
 extern Datum openssl_csr_to_crt(PG_FUNCTION_ARGS);
+extern Datum openssl_rsa_generate_crl(PG_FUNCTION_ARGS);
 
 PG_FUNCTION_INFO_V1(openssl_rsa_generate_key);
 PG_FUNCTION_INFO_V1(openssl_rsa_key_to_csr);
 PG_FUNCTION_INFO_V1(openssl_csr_to_crt);
+PG_FUNCTION_INFO_V1(openssl_rsa_generate_crl);
 
 /* On module load, make sure SSL error strings are available. */
 void
@@ -523,6 +525,161 @@ out:
 		X509_EXTENSION_free(extension);
 	if (serial_no != NULL)
 		ASN1_INTEGER_free(serial_no);
+	if (err != NULL)
+		report_openssl_error(err);
+	PG_RETURN_TEXT_P(res);
+}
+
+/*
+ * Generate an X509_CRL, also known as a CRL.
+ *
+ */
+Datum
+openssl_rsa_generate_crl(PG_FUNCTION_ARGS)
+{
+	text       *ca_cert_file_path = NULL;
+	text       *ca_key_file_path = NULL;
+	BIO        *bio = NULL;
+	RSA        *ca_key = NULL;
+	char       *err = NULL;
+	X509       *ca_cert = NULL;
+	char       *data = NULL;
+	long       len;
+	text       *res = NULL;
+
+	FILE       *fp_cert_file;
+	FILE       *fp_key;
+
+	X509_CRL       *crl = NULL;
+	EVP_PKEY       *pkey = NULL;
+	ASN1_TIME      *tmptm = NULL;
+	X509_NAME *xn;
+
+	if (!PG_ARGISNULL(0))
+	{
+		ca_cert_file_path = PG_GETARG_TEXT_PP(0);
+
+		/* Get the CA crl */
+		fp_cert_file = fopen(text_to_cstring(ca_cert_file_path), "r");
+		if (!fp_cert_file)
+		{
+			err = "FILE_OPEN_CA_CERT";
+			goto out;
+		}
+		ca_cert = PEM_read_X509(fp_cert_file, NULL, NULL, NULL);
+		if (!ca_cert)
+		{
+			err = "PEM_read_X509";
+			goto out;
+		}
+	}
+
+	if (PG_ARGISNULL(1))
+	{
+		err = "PRIVATE_KEY_IS_NULL";
+		goto out;
+	}
+	ca_key_file_path = PG_GETARG_TEXT_PP(1);
+
+	/* Get the CA private key */
+	fp_key = fopen(text_to_cstring(ca_key_file_path), "r");
+	if (!fp_key)
+	{
+		err = "FILE_OPEN_CA_KEY";
+		goto out;
+	}
+	ca_key = PEM_read_RSAPrivateKey(fp_key, NULL, NULL, NULL);
+	if (!ca_key)
+	{
+		err = "PEM_read_RSAPrivateKey";
+		goto out;
+	}
+
+
+        /* Use EVP_PKEY to bind RSA to X509_REQ. */
+        pkey = EVP_PKEY_new();
+        if (!pkey)
+        {
+                err = "EVP_PKEY_new";
+                goto out;
+        }
+        if (!EVP_PKEY_set1_RSA(pkey, ca_key))
+        {
+                err = "EVP_PKEY_assign_RSA";
+                goto out;
+        }
+
+	/* Create an empty CRL */
+	crl = X509_CRL_new();
+	if (!crl)
+	{
+		err = "Error_creating_crl";
+		goto out;
+	}
+
+	/* Set the CRL issuer name as CA's name  */
+        if (!X509_CRL_set_issuer_name(crl, ca_cert ? X509_get_subject_name(ca_cert) : X509_NAME_dup(xn)))
+        {
+                err = "Error_setting_issuer_name";
+                goto out;
+        }
+
+	/* Add timestamp to CRL */
+        tmptm = ASN1_TIME_new();
+        if (!tmptm)
+        {
+                err = "error getting new time";
+                goto out;
+        }
+        X509_gmtime_adj(tmptm,0);
+        X509_CRL_set_lastUpdate(crl, tmptm);
+
+        if (!X509_time_adj_ex(tmptm, VALIDITY_DAYS, 1*60*60 + 0, NULL))
+        {
+                 err = "error setting CRL nextUpdate";
+                 goto out;
+        }
+
+        X509_CRL_set_nextUpdate(crl, tmptm);
+
+        X509_CRL_sort(crl);
+
+	/* Sign the CRL */
+	if (!X509_CRL_sign(crl, pkey, EVP_sha1()))
+	{
+		err = "Error_signing_crl";
+		goto out;
+	}
+
+	/* Write X509 out in PEM format. */
+	bio = BIO_new(BIO_s_mem());
+	if (!bio)
+	{
+		err = "BIO_new";
+		goto out;
+	}
+	if (!PEM_write_bio_X509_CRL(bio, crl))
+	{
+		err = "PEM_write_bio_X509_CRL";
+		goto out;
+	}
+
+	/* Construct return value. */
+	len = BIO_get_mem_data(bio, &data);
+	res = cstring_to_text_with_len(data, len);
+
+	/* Get out, while trying not to leak memory. */
+out:
+	if (pkey != NULL)
+		EVP_PKEY_free(pkey);
+	if (ca_cert != NULL)
+		X509_free(ca_cert);
+	if (ca_key != NULL)
+		RSA_free(ca_key);
+	if (bio != NULL)
+		BIO_free(bio);
+	if (tmptm != NULL)
+		ASN1_TIME_free(tmptm);
 	if (err != NULL)
 		report_openssl_error(err);
 	PG_RETURN_TEXT_P(res);

@@ -29,3 +29,13 @@ COMMENT ON FUNCTION openssl_csr_to_crt(text, text, text) IS 'Generates the CA/se
 -- param1 : csr or certificate signing request
 -- param2 : Path to CA certificate OR NULL If CA self signed certificate is required.
 -- param3 : Path to CA private key OR Path to self private key, If param2 is NULL.';
+
+CREATE OR REPLACE FUNCTION openssl_rsa_generate_crl(text, text)
+RETURNS text
+AS 'MODULE_PATHNAME', 'openssl_rsa_generate_crl'
+LANGUAGE C IMMUTABLE;
+COMMENT ON FUNCTION openssl_rsa_generate_crl(text, text) IS 'Generates the Certificate Revocation List (CRL).
+-- Parameters:
+-- param1 : Path to CA certificate.
+-- param2 : Path to CA private key.';
+

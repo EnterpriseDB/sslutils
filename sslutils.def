@@ -6,6 +6,7 @@ EXPORTS
   openssl_rsa_generate_key
   openssl_rsa_key_to_csr
   openssl_csr_to_crt
+  openssl_rsa_generate_crl
   
   
   
