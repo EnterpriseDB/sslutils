@@ -553,7 +553,7 @@ openssl_rsa_generate_crl(PG_FUNCTION_ARGS)
 	X509_CRL       *crl = NULL;
 	EVP_PKEY       *pkey = NULL;
 	ASN1_TIME      *tmptm = NULL;
-	X509_NAME *xn;
+	X509_NAME      *xn = NULL;
 
 	if (!PG_ARGISNULL(0))
 	{
@@ -634,7 +634,7 @@ openssl_rsa_generate_crl(PG_FUNCTION_ARGS)
         X509_gmtime_adj(tmptm,0);
         X509_CRL_set_lastUpdate(crl, tmptm);
 
-        if (!X509_time_adj_ex(tmptm, VALIDITY_DAYS, 1*60*60 + 0, NULL))
+        if (!X509_gmtime_adj(tmptm, (long)60 * 60 * 24 * VALIDITY_DAYS))
         {
                  err = "error setting CRL nextUpdate";
                  goto out;
