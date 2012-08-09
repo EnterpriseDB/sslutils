@@ -111,14 +111,7 @@
   </Target>
 
   <Target Name="install">
-    <Message Text="Copying the sslutils.dll"/>
-    <Exec command="copy /y sslutils.dll &quot;$(PGLIBPATH)\&quot;"/>
-    <Message Text="Copying the sslutils.lib"/>
-    <Exec command="copy /y sslutils.lib &quot;$(PGLIBPATH)\&quot;"/>
-    <Message Text="Copying the sslutils.sql"/>
-    <Exec command="copy /y sslutils.sql &quot;$(PGSHAREPATH)\contrib\&quot;"/>
-    <Message Text="Copying the uninstall_sslutils.sql"/>
-    <Exec command="copy /y uninstall_sslutils.sql &quot;$(PGSHAREPATH)\contrib\&quot;"/>
+    <Message Text="Please copy the dll, sql(s) &amp; control files "/>
   </Target>
 
   <Target Name="clean">
