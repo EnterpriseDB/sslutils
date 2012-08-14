@@ -10,6 +10,7 @@
         <ClCommand Include="/I$(PGPATH)\include\server\port\win32_msvc" />
         <ClCommand Include="/I$(PGPATH)\include\server\port" />
         <ClCommand Include="/I$(OPENSSLPATH)\include" />
+        <ClCommand Include="/I$(GETTEXTPATH)\include" />
       </ItemGroup>
 
       <PropertyGroup>
@@ -26,7 +27,7 @@
         </When>
         <Otherwise>
           <PropertyGroup>
-	    <DEBUG>0</DEBUG>
+            <DEBUG>0</DEBUG>
             <XTRA_CFLAGS>/Ox /MD /GF</XTRA_CFLAGS>
             <XTRA_LDFLAGS>/defaultlib:$(PGPATH)\lib\postgres.lib /defaultlib:$(OPENSSLPATH)\lib\libeay32.lib  /defaultlib:$(OPENSSLPATH)\lib\ssleay32.lib</XTRA_LDFLAGS>
           </PropertyGroup>
@@ -40,6 +41,7 @@
         <ClCommand Include="/I$(PGPATH)\src\include\port\win32_msvc" />
         <ClCommand Include="/I$(PGPATH)\src\port" />
         <ClCommand Include="/I$(OPENSSLPATH)\include" />
+        <ClCommand Include="/I$(GETTEXTPATH)\include" />
       </ItemGroup>
 
       <PropertyGroup>
@@ -56,7 +58,7 @@
         </When>
         <Otherwise>
           <PropertyGroup>
-	    <DEBUG>0</DEBUG>
+            <DEBUG>0</DEBUG>
             <XTRA_CFLAGS>/Ox /MD /GF</XTRA_CFLAGS>
             <XTRA_LDFLAGS>/defaultlib:$(PGPATH)\Release\postgres\postgres.lib /defaultlib:$(OPENSSLPATH)\lib\libeay32.lib  /defaultlib:$(OPENSSLPATH)\lib\ssleay32.lib</XTRA_LDFLAGS>
           </PropertyGroup>
