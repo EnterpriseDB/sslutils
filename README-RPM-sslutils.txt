@@ -1,35 +1,42 @@
 SSLUtils
 ========
-
 SSLUtils is a Postgres extension that provides SSL certicate generation
 functions to Postgres, for use by the Postgres Enterprise Manager server.
 
-This extension is released under the PostgreSQL Licence.
+The SSLUtils extension is installed by the ppas92-server-sslutils-3.0.0-1.rhel6 
+package.  The SSLUtils files are installed in /usr/ppas-9.2/share/extension, 
+and the libraries are installed in /usr/ppas-9.2/lib.
 
-Copyright 2010 - 2013 EnterpriseDB Corporation.
+Before using the SSLUtils, you must create the sslutils extension.  Use the psql 
+client to connect to the edb database, and issue the command:
 
-Building
---------
+    CREATE EXTENSION sslutils WITH VERSION "1.0";
 
-The module may be built using the PGXS framework on most operating systems:
-
-- Unpack the extensions files in $PGSRC/contrib/sslutils
-- Run "make USE_PGXS=1" in the $PGSRC/contrib/sslutils directory.
-- Run "make USE_PGXS=1 install" to install.
-
-MSVC++ builds are also supported using the clean.bat and build.bat scripts:
-
-- Set the PGPATH environment variable to point to your Postgres installation
-  directory.
-- Run build.bat in a VC++ command prompt to build the extension.
-- Copy sslutils.dll into $PGDIR/lib and *.sql and sslutils.control into 
-  $PGDIR/share/extension
+Please note that before connecting with the psql client, you may be required 
+to modify the pg_hba.conf file; the pg_hba.conf file is located in
+/var/lib/ppas/9.2/data.
 
 
 Functions
 ---------
+After creating the extensions, you can use the psql command line to invoke the 
+SSLUtils functions.  For example, to invoke the openssl_rsa_generate_key, connect
+to the server and issue the command:
 
-The following functions are provided:
+    edb=# select openssl_rsa_generate_key (4096);
+                     openssl_rsa_generate_key                     
+    ------------------------------------------------------------------
+     -----BEGIN RSA PRIVATE KEY-----                                 +
+     MIIJKQIBAAKCAgEAr6uLkjuMhMPkFyAxDrYYc5sqa/JxWWYdaGkwICS4846/qTdH+
+        ...
+
+     lkJ7GslgEHUcoLbMpSufMaX5bObwdj0J9hAtUUBqVjKxp+pcuTqeKaCGVRtc    +
+     -----END RSA PRIVATE KEY-----                                   +
+ 
+    (1 row)
+
+
+SSLUtils provides the following functions:
 
 openssl_rsa_generate_key(integer) RETURNS text
 
@@ -64,3 +71,8 @@ Param 1: Path to CA certificate.
 Param 2: Path to CA private key.
 Returns: The CRL.
 
+
+========================================================
+This extension is released under the PostgreSQL Licence.
+
+Copyright 2010 - 2013 EnterpriseDB Corporation.
