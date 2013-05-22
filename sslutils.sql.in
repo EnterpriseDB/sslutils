@@ -38,7 +38,6 @@ COMMENT ON FUNCTION openssl_rsa_generate_crl(text, text) IS 'Generates the Certi
 -- Parameters:
 -- param1 : Path to CA certificate.
 -- param2 : Path to CA private key.';
-ALTER FUNCTION openssl_rsa_generate_crl(text, text) OWNER TO pem_agent;
 
  
 
