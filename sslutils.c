@@ -175,11 +175,6 @@ openssl_rsa_key_to_csr(PG_FUNCTION_ARGS)
 		err = "EVP_PKEY_assign_RSA";
 		goto out;
 	}
-	if (!X509_REQ_set_pubkey(req, evp))
-	{
-		err = "X509_REQ_set_pubkey";
-		goto out;
-	}
 
 	/* Add attributes. */
 	name = X509_REQ_get_subject_name(req);;
@@ -236,6 +231,18 @@ openssl_rsa_key_to_csr(PG_FUNCTION_ARGS)
 	                                VARSIZE_ANY_EXHDR(email), -1, 0))
 	{
 		err = "X509_NAME_add_entry_by_txt_emailAddress";
+		goto out;
+	}
+
+	if (!X509_REQ_set_pubkey(req, evp))
+	{
+		err = "X509_REQ_set_pubkey";
+		goto out;
+	}
+
+	if (!X509_REQ_sign(req, evp, EVP_sha256()))
+	{
+		err = "X509_REQ_sign";
 		goto out;
 	}
 
@@ -596,18 +603,18 @@ openssl_rsa_generate_crl(PG_FUNCTION_ARGS)
 	}
 
 
-        /* Use EVP_PKEY to bind RSA to X509_REQ. */
-        pkey = EVP_PKEY_new();
-        if (!pkey)
-        {
-                err = "EVP_PKEY_new";
-                goto out;
-        }
-        if (!EVP_PKEY_set1_RSA(pkey, ca_key))
-        {
-                err = "EVP_PKEY_assign_RSA";
-                goto out;
-        }
+	/* Use EVP_PKEY to bind RSA to X509_REQ. */
+	pkey = EVP_PKEY_new();
+	if (!pkey)
+	{
+		err = "EVP_PKEY_new";
+		goto out;
+	}
+	if (!EVP_PKEY_set1_RSA(pkey, ca_key))
+	{
+		err = "EVP_PKEY_assign_RSA";
+		goto out;
+	}
 
 	/* Create an empty CRL */
 	crl = X509_CRL_new();
@@ -618,31 +625,31 @@ openssl_rsa_generate_crl(PG_FUNCTION_ARGS)
 	}
 
 	/* Set the CRL issuer name as CA's name  */
-        if (!X509_CRL_set_issuer_name(crl, ca_cert ? X509_get_subject_name(ca_cert) : X509_NAME_dup(xn)))
-        {
-                err = "Error_setting_issuer_name";
-                goto out;
-        }
+	if (!X509_CRL_set_issuer_name(crl, ca_cert ? X509_get_subject_name(ca_cert) : X509_NAME_dup(xn)))
+	{
+		err = "Error_setting_issuer_name";
+		goto out;
+	}
 
 	/* Add timestamp to CRL */
-        tmptm = ASN1_TIME_new();
-        if (!tmptm)
-        {
-                err = "error getting new time";
-                goto out;
-        }
-        X509_gmtime_adj(tmptm,0);
-        X509_CRL_set_lastUpdate(crl, tmptm);
+	tmptm = ASN1_TIME_new();
+	if (!tmptm)
+	{
+		err = "error getting new time";
+		goto out;
+	}
+	X509_gmtime_adj(tmptm,0);
+	X509_CRL_set_lastUpdate(crl, tmptm);
 
-        if (!X509_gmtime_adj(tmptm, (long)60 * 60 * 24 * VALIDITY_DAYS))
-        {
-                 err = "error setting CRL nextUpdate";
-                 goto out;
-        }
+	if (!X509_gmtime_adj(tmptm, (long)60 * 60 * 24 * VALIDITY_DAYS))
+	{
+		 err = "error setting CRL nextUpdate";
+		 goto out;
+	}
 
-        X509_CRL_set_nextUpdate(crl, tmptm);
+	X509_CRL_set_nextUpdate(crl, tmptm);
 
-        X509_CRL_sort(crl);
+	X509_CRL_sort(crl);
 
 	/* Sign the CRL */
 	if (!X509_CRL_sign(crl, pkey, EVP_sha1()))
