@@ -25,11 +25,15 @@ extern Datum openssl_rsa_generate_key(PG_FUNCTION_ARGS);
 extern Datum openssl_rsa_key_to_csr(PG_FUNCTION_ARGS);
 extern Datum openssl_csr_to_crt(PG_FUNCTION_ARGS);
 extern Datum openssl_rsa_generate_crl(PG_FUNCTION_ARGS);
+extern Datum sslutils_version(PG_FUNCTION_ARGS);
 
 PG_FUNCTION_INFO_V1(openssl_rsa_generate_key);
 PG_FUNCTION_INFO_V1(openssl_rsa_key_to_csr);
 PG_FUNCTION_INFO_V1(openssl_csr_to_crt);
 PG_FUNCTION_INFO_V1(openssl_rsa_generate_crl);
+PG_FUNCTION_INFO_V1(sslutils_version);
+
+#define PEM_SSLUTILS_VERSION "1.1"
 
 /* On module load, make sure SSL error strings are available. */
 void
@@ -690,4 +694,16 @@ out:
 	if (err != NULL)
 		report_openssl_error(err);
 	PG_RETURN_TEXT_P(res);
+}
+
+
+/*
+ * SSLUtils Version
+ *
+ */
+Datum
+sslutils_version(PG_FUNCTION_ARGS)
+{
+	/* Construct return value. */
+	PG_RETURN_TEXT_P(cstring_to_text_with_len(PEM_SSLUTILS_VERSION, strlen(PEM_SSLUTILS_VERSION)));
 }

@@ -3,6 +3,7 @@ EXPORTS
   pg_finfo_openssl_rsa_generate_key
   pg_finfo_openssl_rsa_key_to_csr
   pg_finfo_openssl_csr_to_crt
+  sslutils_version
   openssl_rsa_generate_key
   openssl_rsa_key_to_csr
   openssl_csr_to_crt
