@@ -1,5 +1,6 @@
 EXPORTS
   Pg_magic_func
+  pg_finfo_sslutils_version
   pg_finfo_openssl_rsa_generate_key
   pg_finfo_openssl_rsa_key_to_csr
   pg_finfo_openssl_csr_to_crt
