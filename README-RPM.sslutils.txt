@@ -75,4 +75,4 @@ Returns: The CRL.
 ========================================================
 This extension is released under the PostgreSQL Licence.
 
-Copyright 2010 - 2014 EnterpriseDB Corporation.
+Copyright 2010 - 2015 EnterpriseDB Corporation.
