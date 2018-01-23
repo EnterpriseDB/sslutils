@@ -301,8 +301,8 @@ openssl_csr_to_crt(PG_FUNCTION_ARGS)
 	long       len;
 	text       *res = NULL;
 
-	FILE       *fp_cert_file;
-	FILE       *fp_key;
+	FILE       *fp_cert_file = NULL;
+	FILE       *fp_key = NULL;
 
 	X509           *certificate = NULL;
 	EVP_PKEY       *pkey = NULL;
@@ -538,6 +538,10 @@ out:
 		ASN1_INTEGER_free(serial_no);
 	if (err != NULL)
 		report_openssl_error(err);
+	if (fp_cert_file != NULL)
+		fclose(fp_cert_file);
+	if (fp_key != NULL)
+		fclose(fp_key);
 	PG_RETURN_TEXT_P(res);
 }
 
@@ -558,8 +562,8 @@ openssl_rsa_generate_crl(PG_FUNCTION_ARGS)
 	long       len;
 	text       *res = NULL;
 
-	FILE       *fp_cert_file;
-	FILE       *fp_key;
+	FILE       *fp_cert_file = NULL;
+	FILE       *fp_key = NULL;
 
 	X509_CRL       *crl = NULL;
 	EVP_PKEY       *pkey = NULL;
@@ -693,6 +697,10 @@ out:
 		ASN1_TIME_free(tmptm);
 	if (err != NULL)
 		report_openssl_error(err);
+	if (fp_cert_file != NULL)
+		fclose(fp_cert_file);
+	if (fp_key != NULL)
+		fclose(fp_key);
 	PG_RETURN_TEXT_P(res);
 }
 
