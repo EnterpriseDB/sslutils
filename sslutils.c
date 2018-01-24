@@ -91,6 +91,20 @@ report_openssl_error(char *where)
 	         errmsg("OpenSSL error (%s): %s", where, err)));
 }
 
+static char* string_sep(char **stringp, const char *delim)
+{
+    char *start = *stringp, *p = start ? strpbrk(start, delim) : NULL;
+
+    if (!p) {
+        *stringp = NULL;
+    } else {
+        *p = 0;
+        *stringp = p + 1;
+    }
+
+    return start;
+}
+
 /*
  * This function make certificate revocation string.
  */
@@ -164,7 +178,7 @@ static int revoke(const char* dbfile, X509* x)
 		int j = 0;
 
 		char* p = line;
-		while ((token = strsep(&p, sep)) != NULL)
+		while ((token = string_sep(&p, sep)) != NULL)
 		{
 			if (++j == DB_serial + 1)
 			{
@@ -276,7 +290,11 @@ static int unpack_revinfo(ASN1_TIME** prevtm, int* preason, ASN1_OBJECT** phold,
 	{
 		for (i = 0; i < NUM_REASONS; i++)
 		{
+#ifdef WIN32
+			if (!stricmp(reason_str, crl_reasons[i]))
+#else
 			if (!strcasecmp(reason_str, crl_reasons[i]))
+#endif
 			{
 				reason_code = i;
 				break;
@@ -1311,7 +1329,7 @@ openssl_revoke_certificate(PG_FUNCTION_ARGS)
 		char* token;
 		int k = 0;
 		char* p = line;
-		while ((token = strsep(&p, sep)) != NULL)
+		while ((token = string_sep(&p, sep)) != NULL)
 		{
 			strcpy(fileds[k++], token);
 		}
