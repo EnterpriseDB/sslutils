@@ -4,3 +4,52 @@ AS 'MODULE_PATHNAME', 'sslutils_version'
 LANGUAGE C IMMUTABLE;
 COMMENT ON FUNCTION sslutils_version() IS 'Returns the current version of sslutils';
 
+CREATE OR REPLACE FUNCTION openssl_rsa_generate_key(integer)
+RETURNS text
+AS 'MODULE_PATHNAME', 'openssl_rsa_generate_key'
+LANGUAGE C IMMUTABLE STRICT;
+COMMENT ON FUNCTION openssl_rsa_generate_key(integer) IS 'Generates the RSA Private Key.
+-- Parameter:
+-- param1 : Number of bits.';
+
+CREATE OR REPLACE FUNCTION openssl_rsa_key_to_csr(text, text, text, text, text, text, text)
+RETURNS text
+AS 'MODULE_PATHNAME', 'openssl_rsa_key_to_csr'
+LANGUAGE C IMMUTABLE STRICT;
+COMMENT ON FUNCTION openssl_rsa_key_to_csr(text, text, text, text, text, text, text) IS 'Generates the Certificate Signing Request (CSR).
+-- Parameters:
+-- param1 : rsa key
+-- param2 : CN or common name e.g. agentN
+-- param3 : C or Country
+-- param4 : ST or State
+-- param5 : L or Location (City)
+-- param6 : OU or Organization Unit
+-- param7 : email.';
+
+CREATE OR REPLACE FUNCTION openssl_csr_to_crt(text, text, text)
+RETURNS text
+AS 'MODULE_PATHNAME', 'openssl_csr_to_crt'
+LANGUAGE C IMMUTABLE;
+COMMENT ON FUNCTION openssl_csr_to_crt(text, text, text) IS 'Generates the CA/self signed certificate.
+-- Parameters:
+-- param1 : csr or certificate signing request
+-- param2 : Path to CA certificate OR NULL If CA self signed certificate is required.
+-- param3 : Path to CA private key OR Path to self private key, If param2 is NULL.';
+
+CREATE OR REPLACE FUNCTION openssl_rsa_generate_crl(text, text)
+RETURNS text
+AS 'MODULE_PATHNAME', 'openssl_rsa_generate_crl'
+LANGUAGE C IMMUTABLE;
+COMMENT ON FUNCTION openssl_rsa_generate_crl(text, text) IS 'Generates the Certificate Revocation List (CRL).
+-- Parameters:
+-- param1 : Path to CA certificate.
+-- param2 : Path to CA private key.';
+
+CREATE OR REPLACE FUNCTION openssl_is_crt_expire_on(text, timestamptz)
+RETURNS integer
+AS 'MODULE_PATHNAME', 'openssl_is_crt_expire_on'
+LANGUAGE C IMMUTABLE;
+COMMENT ON FUNCTION openssl_is_crt_expire_on(text, timestamptz) IS 'Compare certificate expiry on given time.'
+-- Parameters:
+-- param1 : Path to certificate.
+-- param2 : time to compare with end date';

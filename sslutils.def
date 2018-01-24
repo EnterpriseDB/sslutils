@@ -9,6 +9,7 @@ EXPORTS
   openssl_rsa_key_to_csr
   openssl_csr_to_crt
   openssl_rsa_generate_crl
+  openssl_is_crt_expire_on
   
   
   

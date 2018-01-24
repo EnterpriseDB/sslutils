@@ -45,5 +45,14 @@ COMMENT ON FUNCTION openssl_rsa_generate_crl(text, text) IS 'Generates the Certi
 -- param1 : Path to CA certificate.
 -- param2 : Path to CA private key.';
 
+CREATE OR REPLACE FUNCTION openssl_is_crt_expire_on(text, timestamptz)
+RETURNS integer
+AS '$libdir/sslutils', 'openssl_is_crt_expire_on'
+LANGUAGE C IMMUTABLE;
+COMMENT ON FUNCTION openssl_is_crt_expire_on(text, timestamptz) IS 'Compare certificate expiry on given time.'
+-- Parameters:
+-- param1 : Path to certificate.
+-- param2 : time to compare with end date';
+
  
 

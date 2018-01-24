@@ -14,6 +14,7 @@
 
 #include "fmgr.h"
 #include "utils/builtins.h"
+#include "utils/datetime.h"
 
 #define SERIAL_RAND_BITS  64
 #define VALIDITY_DAYS  3650
@@ -26,12 +27,14 @@ extern Datum openssl_rsa_key_to_csr(PG_FUNCTION_ARGS);
 extern Datum openssl_csr_to_crt(PG_FUNCTION_ARGS);
 extern Datum openssl_rsa_generate_crl(PG_FUNCTION_ARGS);
 extern Datum sslutils_version(PG_FUNCTION_ARGS);
+extern Datum openssl_is_crt_expire_on(PG_FUNCTION_ARGS);
 
 PG_FUNCTION_INFO_V1(openssl_rsa_generate_key);
 PG_FUNCTION_INFO_V1(openssl_rsa_key_to_csr);
 PG_FUNCTION_INFO_V1(openssl_csr_to_crt);
 PG_FUNCTION_INFO_V1(openssl_rsa_generate_crl);
 PG_FUNCTION_INFO_V1(sslutils_version);
+PG_FUNCTION_INFO_V1(openssl_is_crt_expire_on);
 
 #define PEM_SSLUTILS_VERSION "1.1"
 
@@ -715,3 +718,66 @@ sslutils_version(PG_FUNCTION_ARGS)
 	/* Construct return value. */
 	PG_RETURN_TEXT_P(cstring_to_text_with_len(PEM_SSLUTILS_VERSION, strlen(PEM_SSLUTILS_VERSION)));
 }
+
+/*
+* Return certificate is expire in given N Days.
+*
+*/
+Datum
+openssl_is_crt_expire_on(PG_FUNCTION_ARGS)
+{
+	text			*cert_file_path = NULL;
+	X509			*cert = NULL;
+	ASN1_TIME		*not_after = NULL;
+	char			*err = NULL;
+
+	if (PG_ARGISNULL(0))
+	{
+		err = "CERTIFICATE_FILE_IS_NULL";
+		goto out;
+	}
+
+	cert_file_path = PG_GETARG_TEXT_PP(0);
+	FILE *fp_cert_file = fopen(text_to_cstring(cert_file_path), "r");
+	if (!fp_cert_file)
+	{
+		err = "FILE_OPEN_CA_CERT";
+		goto out;
+	}
+
+	cert = PEM_read_X509(fp_cert_file, NULL, NULL, NULL);
+	if (!cert)
+	{
+		err = "PEM_read_X509";
+		goto out;
+	}
+
+	not_after = X509_get_notAfter(cert);
+	if (!not_after)
+	{
+		err = "X509_get_notAfter";
+		goto out;
+	}
+
+	if (PG_ARGISNULL(1))
+	{
+		err = "COMPARE_TIME_IS_NULL";
+		goto out;
+	}
+
+	TimestampTz cmp_time = PG_GETARG_TIMESTAMPTZ(1);
+	time_t t= timestamptz_to_time_t(cmp_time);
+	int retVal = X509_cmp_time(not_after, &t);
+
+	/* Get out, while trying not to leak memory. */
+out:
+	if (cert != NULL)
+		X509_free(cert);
+	if (fp_cert_file != NULL)
+		fclose(fp_cert_file);
+	if (err != NULL)
+		report_openssl_error(err);
+
+	PG_RETURN_INT32(retVal);
+}
+
