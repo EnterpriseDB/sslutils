@@ -3,4 +3,5 @@ DROP FUNCTION openssl_rsa_generate_key(integer);
 DROP FUNCTION openssl_rsa_key_to_csr(text, text, text, text, text, text, text);
 DROP FUNCTION openssl_csr_to_crt(text, text, text);
 DROP FUNCTION openssl_rsa_generate_crl(text, text);
-
+DROP FUNCTION openssl_is_crt_expire_on(text, timestamptz);
+DROP FUNCTION openssl_revoke_certificate(text, text, text, text, text);

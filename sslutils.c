@@ -19,6 +19,38 @@
 #define SERIAL_RAND_BITS  64
 #define VALIDITY_DAYS  3650
 
+#define DB_NUMBER   6
+#define DB_name     5
+#define DB_file     4
+#define DB_serial   3
+#define DB_rev_date 2
+#define DB_exp_date 1
+#define DB_type     0
+
+#define OCSP_REVOKED_STATUS_NOSTATUS         -1
+#define OCSP_REVOKED_STATUS_KEYCOMPROMISE     1
+#define OCSP_REVOKED_STATUS_CACOMPROMISE      2
+#define OCSP_REVOKED_STATUS_CERTIFICATEHOLD   6
+#define OCSP_REVOKED_STATUS_REMOVEFROMCRL     8
+
+static const char* crl_reasons[] = {
+	// CRL reason strings
+	"unspecified",
+	"keyCompromise",
+	"CACompromise",
+	"affiliationChanged",
+	"superseded",
+	"cessationOfOperation",
+	"certificateHold",
+	"removeFromCRL",
+	// Additional pseudo reasons
+	"holdInstruction",
+	"keyTime",
+	"CAkeyTime"
+};
+
+#define NUM_REASONS (sizeof(crl_reasons) / sizeof(char *))
+
 PG_MODULE_MAGIC;
 
 extern void _PG_init(void);
@@ -28,6 +60,7 @@ extern Datum openssl_csr_to_crt(PG_FUNCTION_ARGS);
 extern Datum openssl_rsa_generate_crl(PG_FUNCTION_ARGS);
 extern Datum sslutils_version(PG_FUNCTION_ARGS);
 extern Datum openssl_is_crt_expire_on(PG_FUNCTION_ARGS);
+extern Datum openssl_revoke_certificate(PG_FUNCTION_ARGS);
 
 PG_FUNCTION_INFO_V1(openssl_rsa_generate_key);
 PG_FUNCTION_INFO_V1(openssl_rsa_key_to_csr);
@@ -35,8 +68,9 @@ PG_FUNCTION_INFO_V1(openssl_csr_to_crt);
 PG_FUNCTION_INFO_V1(openssl_rsa_generate_crl);
 PG_FUNCTION_INFO_V1(sslutils_version);
 PG_FUNCTION_INFO_V1(openssl_is_crt_expire_on);
+PG_FUNCTION_INFO_V1(openssl_revoke_certificate);
 
-#define PEM_SSLUTILS_VERSION "1.1"
+#define PEM_SSLUTILS_VERSION "1.2"
 
 /* On module load, make sure SSL error strings are available. */
 void
@@ -55,6 +89,337 @@ report_openssl_error(char *where)
 	ereport(ERROR,
 	        (errcode(ERRCODE_EXTERNAL_ROUTINE_INVOCATION_EXCEPTION),
 	         errmsg("OpenSSL error (%s): %s", where, err)));
+}
+
+/*
+ * This function make certificate revocation string.
+ */
+static char* make_revocation_str()
+{
+	char* str;
+	ASN1_UTCTIME* revtm = NULL;
+	int i;
+
+	revtm = X509_gmtime_adj(NULL, 0);
+
+	if (!revtm)
+		return NULL;
+
+	i = revtm->length + 1;
+
+	str = OPENSSL_malloc(i);
+
+	if (!str)
+		return NULL;
+
+	BUF_strlcpy(str, (char *)revtm->data, i);
+	ASN1_UTCTIME_free(revtm);
+
+	return str;
+}
+
+/*
+ * This function revoke client certificate and add entry in database file.
+ */
+static int revoke(const char* dbfile, X509* x)
+{
+	int i;
+	ASN1_UTCTIME* tm = NULL;
+	char* rev_str = NULL;
+	BIGNUM* bn = NULL;
+	char* row[DB_NUMBER];
+        FILE *f = NULL;
+	char line[512] = {0};
+
+	for (i = 0; i < DB_NUMBER; i++)
+		row[i] = NULL;
+
+	row[DB_name] = X509_NAME_oneline(X509_get_subject_name(x), NULL, 0);
+	bn = ASN1_INTEGER_to_BN(X509_get_serialNumber(x), NULL);
+
+	if (bn == NULL)
+		return -1;
+
+	if (BN_is_zero(bn))
+		row[DB_serial] = BUF_strdup("00");
+	else
+		row[DB_serial] = BN_bn2hex(bn);
+
+	BN_free(bn);
+
+	if (row[DB_name] == NULL || row[DB_serial] == NULL)
+		return -1;
+
+	// open database file in append to add certificate to be revoked.
+	f = fopen(dbfile, "a+");
+	if (f == NULL)
+		return -1;
+
+	// Lookup whether the client cert has been revoke by serial number
+	// and rotate the index.txt
+	while (fgets(line, 512, f))
+	{
+		char* sep = "\t";
+		char* token;
+		int j = 0;
+
+		char* p = line;
+		while ((token = strsep(&p, sep)) != NULL)
+		{
+			if (++j == DB_serial + 1)
+			{
+				if (strcmp(row[DB_serial], token) == 0)
+				{
+					// serial number already found in CRL file.
+					fclose(f);
+					return -1;
+				}
+				break;
+			}
+		}
+	}
+
+	// Insert new record to index.txt
+	row[DB_type] = (char *)OPENSSL_malloc(2);
+
+	tm = X509_get_notAfter(x);
+	row[DB_exp_date] = (char *)OPENSSL_malloc(tm->length + 1);
+	memcpy(row[DB_exp_date], tm->data, tm->length);
+	row[DB_exp_date][tm->length] = '\0';
+
+	row[DB_rev_date] = NULL;
+	row[DB_file] = (char *)OPENSSL_malloc(8);
+
+	if (row[DB_type] == NULL || row[DB_exp_date] == NULL || row[DB_file] == NULL)
+		return -1;
+
+	BUF_strlcpy(row[DB_file], "unknown", 8);
+	row[DB_type][0] = 'V';
+	row[DB_type][1] = '\0';
+
+	rev_str = make_revocation_str();
+	if (rev_str == NULL)
+		return -1;
+
+	row[DB_type][0] = 'R';
+	row[DB_type][1] = '\0';
+	row[DB_rev_date] = rev_str;
+
+	for (i = 0; i < DB_NUMBER; i++)
+	{
+		if (row[i] != NULL)
+		{
+			fwrite(row[i], strlen(row[i]), 1, f);
+			fwrite("\t", 1, 1, f);
+			OPENSSL_free(row[i]);
+		}
+	}
+	fwrite("\n", 1, 1, f);
+
+	fclose(f);
+	return 0;
+}
+
+/*
+ * This function get the certificate revision information.
+ */
+static int unpack_revinfo(ASN1_TIME** prevtm, int* preason, ASN1_OBJECT** phold,
+				   ASN1_GENERALIZEDTIME** pinvtm, const char* str)
+{
+	char* tmp = NULL;
+	char* rtime_str, *reason_str = NULL, *arg_str = NULL, *p;
+	int reason_code = -1;
+	int ret = 0;
+	unsigned int i;
+	ASN1_OBJECT* hold = NULL;
+	ASN1_GENERALIZEDTIME* comp_time = NULL;
+	char errBuffer[512] = {0};
+	tmp = BUF_strdup(str);
+
+	if(!tmp)
+	{
+		sprintf (errBuffer, "memory allocation failure\n");
+		goto err;
+	}
+
+	p = strchr(tmp, ',');
+	rtime_str = tmp;
+
+	if (p)
+	{
+		*p = '\0';
+		p++;
+		reason_str = p;
+		p = strchr(p, ',');
+		if (p)
+		{
+			*p = '\0';
+			arg_str = p + 1;
+		}
+	}
+
+	if (prevtm)
+	{
+		*prevtm = ASN1_UTCTIME_new();
+		if(!*prevtm)
+		{
+			sprintf (errBuffer, "memory allocation failure\n");
+			goto err;
+		}
+		if (!ASN1_UTCTIME_set_string(*prevtm, rtime_str))
+		{
+			sprintf (errBuffer, "invalid revocation date %s\n", rtime_str);
+			goto err;
+		}
+	}
+	if (reason_str)
+	{
+		for (i = 0; i < NUM_REASONS; i++)
+		{
+			if (!strcasecmp(reason_str, crl_reasons[i]))
+			{
+				reason_code = i;
+				break;
+			}
+		}
+		if (reason_code == OCSP_REVOKED_STATUS_NOSTATUS)
+		{
+			sprintf (errBuffer, "invalid reason code %s\n", reason_str);
+			goto err;
+		}
+
+		if (reason_code == 7)
+			reason_code = OCSP_REVOKED_STATUS_REMOVEFROMCRL;
+		else if (reason_code == 8)
+		{
+			if (!arg_str)
+			{
+				sprintf (errBuffer, "missing hold instruction\n");
+				goto err;
+			}
+			reason_code = OCSP_REVOKED_STATUS_CERTIFICATEHOLD;
+			hold = OBJ_txt2obj(arg_str, 0);
+
+			if (!hold)
+			{
+				sprintf (errBuffer, "invalid object identifier %s\n", arg_str);
+				goto err;
+			}
+			if (phold)
+				*phold = hold;
+		}
+		else if ((reason_code == 9) || (reason_code == 10))
+		{
+			if (!arg_str)
+			{
+				sprintf (errBuffer, "missing compromised time\n");
+				goto err;
+			}
+			comp_time = ASN1_GENERALIZEDTIME_new();
+			if(!comp_time)
+			{
+				sprintf (errBuffer, "memory allocation failure\n");
+				goto err;
+			}
+			if (!ASN1_GENERALIZEDTIME_set_string(comp_time, arg_str))
+			{
+				sprintf (errBuffer, "invalid compromised time %s\n", arg_str);
+				goto err;
+			}
+			if (reason_code == 9)
+				reason_code = OCSP_REVOKED_STATUS_KEYCOMPROMISE;
+			else
+				reason_code = OCSP_REVOKED_STATUS_CACOMPROMISE;
+		}
+	}
+
+	if (preason)
+		*preason = reason_code;
+	if (pinvtm)
+		*pinvtm = comp_time;
+	else
+		ASN1_GENERALIZEDTIME_free(comp_time);
+
+	ret = 1;
+
+ err:
+	if (tmp)
+		OPENSSL_free(tmp);
+	if (!phold)
+		ASN1_OBJECT_free(hold);
+	if (!pinvtm)
+		ASN1_GENERALIZEDTIME_free(comp_time);
+	if (errBuffer)
+		report_openssl_error(errBuffer);
+
+	return ret;
+}
+
+/*
+ * Convert revocation field to X509_REVOKED entry
+ * return code:
+ * 0 error
+ * 1 OK
+ * 2 OK and some extensions added (i.e. V2 CRL)
+ */
+int make_revoked(X509_REVOKED* rev, const char* str)
+{
+	char* tmp = NULL;
+	int reason_code = -1;
+	int i, ret = 0;
+	ASN1_OBJECT* hold = NULL;
+	ASN1_GENERALIZEDTIME* comp_time = NULL;
+	ASN1_ENUMERATED* rtmp = NULL;
+
+	ASN1_TIME* revDate = NULL;
+
+	i = unpack_revinfo(&revDate, &reason_code, &hold, &comp_time, str);
+
+	if (i == 0)
+		goto err;
+
+	if (rev && !X509_REVOKED_set_revocationDate(rev, revDate))
+		goto err;
+
+	if (rev && (reason_code != OCSP_REVOKED_STATUS_NOSTATUS))
+	{
+		rtmp = ASN1_ENUMERATED_new();
+		if (!rtmp || !ASN1_ENUMERATED_set(rtmp, reason_code))
+			goto err;
+		if (!X509_REVOKED_add1_ext_i2d(rev, NID_crl_reason, rtmp, 0, 0))
+			goto err;
+	}
+
+	if (rev && comp_time)
+	{
+		if (!X509_REVOKED_add1_ext_i2d(rev, NID_invalidity_date, comp_time, 0, 0))
+			goto err;
+	}
+	if (rev && hold)
+	{
+		if (!X509_REVOKED_add1_ext_i2d
+			(rev, NID_hold_instruction_code, hold, 0, 0))
+			goto err;
+	}
+
+	if (reason_code != OCSP_REVOKED_STATUS_NOSTATUS)
+		ret = 2;
+	else
+		ret = 1;
+
+err:
+	if (tmp)
+		OPENSSL_free(tmp);
+	if (hold)
+		ASN1_OBJECT_free(hold);
+	if (comp_time)
+		ASN1_GENERALIZEDTIME_free(comp_time);
+	if (rtmp)
+		ASN1_ENUMERATED_free(rtmp);
+	if (revDate)
+		ASN1_TIME_free(revDate);
+
+	return ret;
 }
 
 /*
@@ -779,5 +1144,267 @@ out:
 		report_openssl_error(err);
 
 	PG_RETURN_INT32(retVal);
+}
+
+/*
+ * Revoke the client certificate and Re-generate CRL.
+ */
+Datum
+openssl_revoke_certificate(PG_FUNCTION_ARGS)
+{
+	text       *cert_file_path = NULL;
+	text       *ca_cert_file_path = NULL;
+	text       *ca_key_file_path = NULL;
+	text       *index_db_file_path = NULL;
+	text       *crl_file_path = NULL;
+
+	X509       *cacert = NULL;
+	EVP_PKEY   *pkey = NULL;
+	X509_CRL   *crl = NULL;
+	ASN1_TIME  *tmptm = NULL;
+	BIO        *sout = NULL;
+	BIO        *bio_mem = NULL;
+	X509_NAME  *xn = NULL;
+	X509       *x = NULL;
+	BIGNUM     *serial = NULL;
+	FILE       *f = NULL;
+	FILE       *f1 = NULL;
+
+	BIO        *bio = NULL;
+	char       *err = NULL;
+	char       *data = NULL;
+	long       len;
+	text       *res = NULL;
+	int        ret_val;
+	char       line[512];
+
+	if (PG_ARGISNULL(0) || PG_ARGISNULL(1) || PG_ARGISNULL(2) || PG_ARGISNULL(3) || PG_ARGISNULL(4))
+	{
+		err = "INVALID_ARGUMENTS";
+		goto out;
+	}
+
+	cert_file_path     = PG_GETARG_TEXT_PP(0);
+	ca_cert_file_path  = PG_GETARG_TEXT_PP(1);
+	ca_key_file_path   = PG_GETARG_TEXT_PP(2);
+	index_db_file_path = PG_GETARG_TEXT_PP(3);
+	crl_file_path      = PG_GETARG_TEXT_PP(4);
+
+	/* read revoked certificate from file */
+	bio = BIO_new(BIO_s_file());
+	if (bio == NULL)
+	{
+		err = "ERROR_BIO_NEW";
+		goto out;
+	}
+
+	ret_val = BIO_read_filename(bio, text_to_cstring(cert_file_path));
+	if (ret_val <= 0)
+	{
+		err = "ERROR_BIO_READ_FILE";
+		goto out;
+	}
+
+	x = PEM_read_bio_X509_AUX(bio, NULL, NULL, NULL);
+
+	if (x == NULL)
+	{
+		err = "ERROR_READ_BIO_AUX";
+		goto out;
+	}
+
+	// First add certificate to database file index.txt which contains list of revoke certificates.
+	int ret = revoke(text_to_cstring(index_db_file_path), x);
+	if (ret == -1)
+	{
+		err = "ADD_CERT_TO_DB_FILE";
+		goto out;
+	}
+
+	/* load cacert */
+	cacert = X509_new();
+	if (cacert == NULL)
+	{
+		err = "ERROR_X509_NEW";
+		goto out;
+	}
+
+	f = fopen(text_to_cstring(ca_cert_file_path), "r");
+	if (f == NULL)
+	{
+		err = "FILE_OPEN_CA_CERT";
+		goto out;
+	}
+
+	PEM_read_X509(f, &cacert, NULL, NULL);
+	fclose(f);
+
+	/* load cakey */
+	pkey = EVP_PKEY_new();
+	if (pkey == NULL)
+	{
+		err = "ERROR_CA_KEY_NEW";
+		goto out;
+	}
+
+	f = fopen(text_to_cstring(ca_key_file_path), "r");
+	if (f == NULL)
+	{
+		err = "ERROR_OPEN_CA_KEY";
+		goto out;
+	}
+
+	PEM_read_PrivateKey(f, &pkey, NULL, NULL);
+	fclose(f);
+
+	crl = X509_CRL_new();
+	if (crl == NULL)
+	{
+		err = "ERROR_X509_CRL_NEW";
+		goto out;
+	}
+
+	/* Set the CRL issuer name as CA's name  */
+	if (!X509_CRL_set_issuer_name(crl, cacert ? X509_get_subject_name(cacert) : X509_NAME_dup(xn)))
+	{
+		err = "CRL_SET_ISSUER_NAME";
+		goto out;
+	}
+
+	/* Add timestamp to CRL */
+	tmptm = ASN1_TIME_new();
+	if (tmptm == NULL)
+	{
+		err = "error getting new time";
+		goto out;
+	}
+
+	X509_gmtime_adj(tmptm, 0);
+	X509_CRL_set_lastUpdate(crl, tmptm);
+
+	if (!X509_gmtime_adj(tmptm, (long)60 * 60 * 24 * VALIDITY_DAYS))
+	{
+		err = "error setting CRL nextUpdate";
+		goto out;
+	}
+
+	X509_CRL_set_nextUpdate(crl, tmptm);
+
+	/*
+	 * Read every serial number from `index.txt` and create a
+	 * X509_REVOKED: r with serial number, and insert r to CRL.
+	 */
+	f1 = fopen(text_to_cstring(index_db_file_path), "r");
+	if (f1 == NULL)
+	{
+		err = "ERROR_OPEN_DB_FILE";
+		goto out;
+	}
+
+	while (fgets(line, 512, f1))
+	{
+		if (line[0] != 'R')
+			continue;
+
+		char fileds[6][64];
+		char* sep = "\t";
+		char* token;
+		int k = 0;
+		char* p = line;
+		while ((token = strsep(&p, sep)) != NULL)
+		{
+			strcpy(fileds[k++], token);
+		}
+
+		X509_REVOKED* r = X509_REVOKED_new();
+		if (r == NULL)
+			goto out;
+
+		int retVal = make_revoked(r, fileds[DB_rev_date]);
+		if (retVal <= 0)
+			goto out;
+		retVal = BN_hex2bn(&serial, fileds[DB_serial]);
+		if (retVal <= 0)
+			goto out;
+
+		ASN1_INTEGER* tmpser = BN_to_ASN1_INTEGER(serial, NULL);
+		BN_free(serial);
+		serial = NULL;
+
+		if (tmpser == NULL)
+			goto out;
+
+		X509_REVOKED_set_serialNumber(r, tmpser);
+		ASN1_INTEGER_free(tmpser);
+		X509_CRL_add0_revoked(crl, r);
+	}
+
+	fclose(f1);
+	X509_CRL_sort(crl);
+
+	/* Sign the CRL */
+	if (!X509_CRL_sign(crl, pkey, EVP_sha1()))
+	{
+		err = "Error_signing_crl";
+		goto out;
+	}
+
+	sout = BIO_new(BIO_s_file());
+	if (sout == NULL)
+	{
+		err = "Error_BIO_NEW";
+		goto out;
+	}
+
+	if (!BIO_write_filename(sout, text_to_cstring(crl_file_path)))
+	{
+		err = "PEM_write_bio_X509_CRL";
+		goto out;
+	}
+
+	if (!PEM_write_bio_X509_CRL(sout, crl))
+	{
+		err = "PEM_write_bio_X509_CRL";
+		goto out;
+	}
+
+	/* Construct return value. */
+	bio_mem = BIO_new(BIO_s_mem());
+	if (!bio_mem)
+	{
+		err = "BIO_new";
+		goto out;
+	}
+	if (!PEM_write_bio_X509_CRL(bio_mem, crl))
+	{
+		err = "PEM_write_bio_X509_REQ";
+		goto out;
+	}
+
+	len = BIO_get_mem_data(bio_mem, &data);
+	res = cstring_to_text_with_len(data, len);
+
+	/* Get out, while trying not to leak memory. */
+out:
+	if (pkey != NULL)
+		EVP_PKEY_free(pkey);
+	if (bio != NULL)
+		BIO_free(bio);
+	if (tmptm != NULL)
+		ASN1_TIME_free(tmptm);
+	if (x != NULL)
+		X509_free(x);
+	if (cacert)
+		X509_free(cacert);
+	if (crl)
+		X509_CRL_free(crl);
+	if (sout)
+		BIO_free(sout);
+	if (bio_mem)
+		BIO_free(bio_mem);
+	if (err != NULL)
+		report_openssl_error(err);
+
+	PG_RETURN_TEXT_P(res);
 }
 
