@@ -83,3 +83,9 @@ Param 4: Path to database file which contains serial number of all revoked certi
 Param 5: Path to new CRL file to be generated.
 Returns: The CRL.
 
+openssl_get_crt_expiry_date()
+
+Purpose: Get the certificate expiry date.
+Param1:  Path to certificate.
+Returns: end date of the certificate.
+

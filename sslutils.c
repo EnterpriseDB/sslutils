@@ -61,6 +61,7 @@ extern Datum openssl_rsa_generate_crl(PG_FUNCTION_ARGS);
 extern Datum sslutils_version(PG_FUNCTION_ARGS);
 extern Datum openssl_is_crt_expire_on(PG_FUNCTION_ARGS);
 extern Datum openssl_revoke_certificate(PG_FUNCTION_ARGS);
+extern Datum openssl_get_crt_expiry_date(PG_FUNCTION_ARGS);
 
 PG_FUNCTION_INFO_V1(openssl_rsa_generate_key);
 PG_FUNCTION_INFO_V1(openssl_rsa_key_to_csr);
@@ -69,6 +70,7 @@ PG_FUNCTION_INFO_V1(openssl_rsa_generate_crl);
 PG_FUNCTION_INFO_V1(sslutils_version);
 PG_FUNCTION_INFO_V1(openssl_is_crt_expire_on);
 PG_FUNCTION_INFO_V1(openssl_revoke_certificate);
+PG_FUNCTION_INFO_V1(openssl_get_crt_expiry_date);
 
 #define PEM_SSLUTILS_VERSION "1.2"
 
@@ -1149,7 +1151,9 @@ openssl_is_crt_expire_on(PG_FUNCTION_ARGS)
 	}
 
 	TimestampTz cmp_time = PG_GETARG_TIMESTAMPTZ(1);
+	// Convert timestamptz to time_t for comparision.
 	time_t t= timestamptz_to_time_t(cmp_time);
+	// Compare the end date of certificate with given date.
 	int retVal = X509_cmp_time(not_after, &t);
 
 	/* Get out, while trying not to leak memory. */
@@ -1424,5 +1428,104 @@ out:
 		report_openssl_error(err);
 
 	PG_RETURN_TEXT_P(res);
+}
+
+/*
+* Convert ASN1_TIME to tm.
+*
+*/
+time_t
+ASN1_GetTimeT(ASN1_TIME* time)
+{
+	struct tm t;
+	const char* str = (const char*)time->data;
+	size_t i = 0;
+
+	memset(&t, 0, sizeof(t));
+
+	if (time->type == V_ASN1_UTCTIME) {/* two digit year */
+		t.tm_year = (str[i++] - '0') * 10;
+		t.tm_year += (str[i++] - '0');
+		if (t.tm_year < 70)
+			t.tm_year += 100;
+	}
+	else if (time->type == V_ASN1_GENERALIZEDTIME) {/* four digit year */
+		t.tm_year = (str[i++] - '0') * 1000;
+		t.tm_year += (str[i++] - '0') * 100;
+		t.tm_year += (str[i++] - '0') * 10;
+		t.tm_year += (str[i++] - '0');
+		t.tm_year -= 1900;
+	}
+
+	t.tm_mon = (str[i++] - '0') * 10;
+	t.tm_mon += (str[i++] - '0') - 1; // -1 since January is 0 not 1.
+	t.tm_mday = (str[i++] - '0') * 10;
+	t.tm_mday += (str[i++] - '0');
+	t.tm_hour = (str[i++] - '0') * 10;
+	t.tm_hour += (str[i++] - '0');
+	t.tm_min = (str[i++] - '0') * 10;
+	t.tm_min += (str[i++] - '0');
+	t.tm_sec = (str[i++] - '0') * 10;
+	t.tm_sec += (str[i++] - '0');
+
+	/* Note: we did not adjust the time based on time zone information */
+	return mktime(&t);
+}
+
+/*
+* Return certificate's expiry date.
+*
+*/
+Datum
+openssl_get_crt_expiry_date(PG_FUNCTION_ARGS)
+{
+	text			*cert_file_path = NULL;
+	X509			*cert = NULL;
+	ASN1_TIME		*not_after = NULL;
+	char			*err = NULL;
+
+	if (PG_ARGISNULL(0))
+	{
+		err = "CERTIFICATE_FILE_IS_NULL";
+		goto out;
+	}
+
+	cert_file_path = PG_GETARG_TEXT_PP(0);
+	FILE *fp_cert_file = fopen(text_to_cstring(cert_file_path), "r");
+	if (!fp_cert_file)
+	{
+		err = "FILE_OPEN_CA_CERT";
+		goto out;
+	}
+
+	cert = PEM_read_X509(fp_cert_file, NULL, NULL, NULL);
+	if (!cert)
+	{
+		err = "PEM_read_X509";
+		goto out;
+	}
+
+	not_after = X509_get_notAfter(cert);
+	if (!not_after)
+	{
+		err = "X509_get_notAfter";
+		goto out;
+	}
+
+	// Convert ASN1_TIME to time_t.
+	time_t tNotAfter = ASN1_GetTimeT(not_after);
+	// Convert time_t to TimestampTz.
+	TimestampTz timeTZ = time_t_to_timestamptz(tNotAfter);
+
+	/* Get out, while trying not to leak memory. */
+out:
+	if (cert != NULL)
+		X509_free(cert);
+	if (fp_cert_file != NULL)
+		fclose(fp_cert_file);
+	if (err != NULL)
+		report_openssl_error(err);
+
+	PG_RETURN_TIMESTAMPTZ(timeTZ);
 }
 

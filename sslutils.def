@@ -11,6 +11,7 @@ EXPORTS
   openssl_rsa_generate_crl
   openssl_is_crt_expire_on
   openssl_revoke_certificate
+  openssl_get_crt_expiry_date
   
   
   
