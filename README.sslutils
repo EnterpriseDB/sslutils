@@ -73,14 +73,11 @@ Returns: 1 - sucesss
          -1 - certificate expires
          0 - error
 
-openssl_revoke_certificate(text, text, text, text, text) RETURNS text
+openssl_revoke_certificate(text, text) RETURNS text
 
 Purpose: Revoke the client certificate and re-generate crl file.
 Param 1: Path to client certificate to be revoked.
-Param 2: Path to CA certificate.
-Param 3: Path to CA private key.
-Param 4: Path to database file which contains serial number of all revoked certificates.
-Param 5: Path to new CRL file to be generated.
+Param 2: Path to data directory where CA certificates, keys and CRL file are stored.
 Returns: The CRL.
 
 openssl_get_crt_expiry_date()

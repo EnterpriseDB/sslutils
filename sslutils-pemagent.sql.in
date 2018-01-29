@@ -4,5 +4,5 @@ GRANT EXECUTE ON FUNCTION openssl_csr_to_crt(text, text, text) TO GROUP pem_agen
 GRANT EXECUTE ON FUNCTION openssl_rsa_generate_crl(text, text) TO GROUP pem_agent;
 GRANT EXECUTE ON FUNCTION sslutils_version() TO GROUP pem_agent;
 GRANT EXECUTE ON FUNCTION openssl_is_crt_expire_on(text, timestamptz) TO GROUP pem_agent;
-GRANT EXECUTE ON FUNCTION openssl_revoke_certificate(text, text, text, text, text) TO GROUP pem_agent;
+GRANT EXECUTE ON FUNCTION openssl_revoke_certificate(text, text) TO GROUP pem_agent;
 GRANT EXECUTE ON FUNCTION openssl_get_crt_expiry_date(text) TO GROUP pem_agent;
