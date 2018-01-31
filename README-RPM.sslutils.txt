@@ -85,7 +85,7 @@ openssl_revoke_certificate(text, text) RETURNS text
 
 Purpose: Revoke the client certificate and re-generate crl file.
 Param 1: Path to client certificate to be revoked.
-Param 2: Path to data directory where CA certificates, keys and CRL file are stored.
+Param 2: CRL file name specified in postgres config file.
 Returns: The CRL.
 
 openssl_get_crt_expiry_date()

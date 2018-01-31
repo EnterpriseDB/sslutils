@@ -61,7 +61,7 @@ LANGUAGE C IMMUTABLE;
 COMMENT ON FUNCTION openssl_revoke_certificate(text, text) IS 'Revoke Certificate and add to Certificate Revocation List (CRL).
 -- Parameters:
 -- param1 : Path to client certificate to be revoked.
--- param2 : Path to data directory where CA certificates, keys and CRL file are stored.';
+-- param2 : CRL file name specified in postgres config file.';
 
 CREATE OR REPLACE FUNCTION openssl_get_crt_expiry_date(text)
 RETURNS timestamptz

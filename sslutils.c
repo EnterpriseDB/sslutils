@@ -1177,7 +1177,7 @@ Datum
 openssl_revoke_certificate(PG_FUNCTION_ARGS)
 {
 	text       *cert_t_data = NULL;
-	text       *data_dir_path = NULL;
+	text       *t_crl_filename = NULL;
 
 	X509       *cacert = NULL;
 	EVP_PKEY   *pkey = NULL;
@@ -1199,9 +1199,12 @@ openssl_revoke_certificate(PG_FUNCTION_ARGS)
 	char       line[512];
 	char       *cert_data = NULL;
 	int        cert_data_size = 0;
-	char       *dir_path = NULL;
-	char       *c_data_dir_path = NULL;
-	int        data_dir_len = 0;
+	char       *c_crl_filename = NULL;
+	char       *crl_file_buffer = NULL;
+	int        crl_file_len = 0;
+	char       *ca_cert_file = "ca_certificate.crt";
+	char       *ca_key_file = "ca_key.key";
+	char       *revoke_cert_db_file = "revoke_cert.db";
 
 	if (PG_ARGISNULL(0) || PG_ARGISNULL(1))
 	{
@@ -1210,10 +1213,10 @@ openssl_revoke_certificate(PG_FUNCTION_ARGS)
 	}
 
 	cert_t_data        = PG_GETARG_TEXT_PP(0);
-	data_dir_path      = PG_GETARG_TEXT_PP(1);
+	t_crl_filename     = PG_GETARG_TEXT_PP(1);
 
-	c_data_dir_path = text_to_cstring(data_dir_path);
-	data_dir_len = strlen(c_data_dir_path);
+	c_crl_filename  = text_to_cstring(t_crl_filename);
+	crl_file_len = strlen(c_crl_filename);
 
 	cert_data_size = strlen(text_to_cstring(cert_t_data)) + 1;
 	cert_data = OPENSSL_malloc(cert_data_size + 10);
@@ -1225,20 +1228,6 @@ openssl_revoke_certificate(PG_FUNCTION_ARGS)
 	}
 
 	BUF_strlcpy(cert_data, text_to_cstring(cert_t_data), cert_data_size);
-
-	dir_path = NULL;
-	dir_path = OPENSSL_malloc(data_dir_len + BUFFER_PADDING_BYTES);
-
-	if (!dir_path)
-	{
-		err = "ERROR_MALLOC_DIR_PATH";
-		goto out;
-	}
-
-	// Copy data directoy path to buffer
-	memset(dir_path, 0x00, (data_dir_len + BUFFER_PADDING_BYTES));
-	memcpy(dir_path, c_data_dir_path, (data_dir_len + BUFFER_PADDING_BYTES));
-	strcat(dir_path, "revoke_cert.db");
 
 	// Create a buffer to read the certificate data.
 	bio = BIO_new_mem_buf((void*)cert_data, cert_data_size);
@@ -1255,7 +1244,7 @@ openssl_revoke_certificate(PG_FUNCTION_ARGS)
 	}
 
 	// First add certificate to database file index.txt which contains list of revoke certificates.
-	int ret = revoke(dir_path, x);
+	int ret = revoke(revoke_cert_db_file, x);
 	if (ret == -1)
 	{
 		err = "ADD_CERT_TO_DB_FILE";
@@ -1270,12 +1259,7 @@ openssl_revoke_certificate(PG_FUNCTION_ARGS)
 		goto out;
 	}
 
-	// Copy data directoy path to buffer
-	memset(dir_path, 0x00, (data_dir_len + BUFFER_PADDING_BYTES));
-	memcpy(dir_path, c_data_dir_path, (data_dir_len + BUFFER_PADDING_BYTES));
-	strcat(dir_path, "ca_certificate.crt");
-
-	f = fopen(dir_path, "r");
+	f = fopen(ca_cert_file, "r");
 	if (f == NULL)
 	{
 		err = "FILE_OPEN_CA_CERT";
@@ -1293,12 +1277,7 @@ openssl_revoke_certificate(PG_FUNCTION_ARGS)
 		goto out;
 	}
 
-	// Copy data directoy path to buffer
-	memset(dir_path, 0x00, (data_dir_len + BUFFER_PADDING_BYTES));
-	memcpy(dir_path, c_data_dir_path, (data_dir_len + BUFFER_PADDING_BYTES));
-	strcat(dir_path, "ca_key.key");
-
-	f = fopen(dir_path, "r");
+	f = fopen(ca_key_file, "r");
 	if (f == NULL)
 	{
 		err = "ERROR_OPEN_CA_KEY";
@@ -1342,14 +1321,10 @@ openssl_revoke_certificate(PG_FUNCTION_ARGS)
 	X509_CRL_set_nextUpdate(crl, tmptm);
 
 	/*
-	 * Read every serial number from `index.txt` and create a
+	 * Read every serial number from revoke certificate db file and create a
 	 * X509_REVOKED: r with serial number, and insert r to CRL.
 	 */
-	memset(dir_path, 0x00, (data_dir_len + BUFFER_PADDING_BYTES));
-	memcpy(dir_path, c_data_dir_path, (data_dir_len + BUFFER_PADDING_BYTES));
-	strcat(dir_path, "revoke_cert.db");
-
-	f1 = fopen(dir_path, "r");
+	f1 = fopen(revoke_cert_db_file, "r");
 	if (f1 == NULL)
 	{
 		err = "ERROR_OPEN_DB_FILE";
@@ -1411,11 +1386,17 @@ openssl_revoke_certificate(PG_FUNCTION_ARGS)
 		goto out;
 	}
 
-	memset(dir_path, 0x00, (data_dir_len + BUFFER_PADDING_BYTES));
-	memcpy(dir_path, c_data_dir_path, (data_dir_len + BUFFER_PADDING_BYTES));
-	strcat(dir_path, "root.crl");
+	crl_file_buffer = OPENSSL_malloc(crl_file_len + BUFFER_PADDING_BYTES);
+	if (!crl_file_buffer)
+	{
+		err = "ERROR_MALLOC_CRL_BUFFER";
+		goto out;
+	}
 
-	if (!BIO_write_filename(sout, dir_path))
+	memset(crl_file_buffer, 0x00, (crl_file_len + BUFFER_PADDING_BYTES));
+	memcpy(crl_file_buffer, c_crl_filename, (crl_file_len + 1));
+
+	if (!BIO_write_filename(sout, crl_file_buffer))
 	{
 		err = "PEM_write_bio_X509_CRL";
 		goto out;
@@ -1463,8 +1444,8 @@ out:
 		BIO_free(bio_mem);
 	if (cert_data)
 		OPENSSL_free(cert_data);
-	if (dir_path)
-		OPENSSL_free(dir_path);
+	if (crl_file_buffer)
+		OPENSSL_free(crl_file_buffer);
 	if (err != NULL)
 		report_openssl_error(err);
 
