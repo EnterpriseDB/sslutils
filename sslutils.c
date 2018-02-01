@@ -1370,6 +1370,7 @@ openssl_revoke_certificate(PG_FUNCTION_ARGS)
 	}
 
 	fclose(f1);
+	f1 = NULL;
 	X509_CRL_sort(crl);
 
 	/* Sign the CRL */
@@ -1446,6 +1447,8 @@ out:
 		OPENSSL_free(cert_data);
 	if (crl_file_buffer)
 		OPENSSL_free(crl_file_buffer);
+	if (f1 != NULL)
+		fclose(f1);
 	if (err != NULL)
 		report_openssl_error(err);
 
