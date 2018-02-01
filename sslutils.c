@@ -74,6 +74,8 @@ PG_FUNCTION_INFO_V1(openssl_is_crt_expire_on);
 PG_FUNCTION_INFO_V1(openssl_revoke_certificate);
 PG_FUNCTION_INFO_V1(openssl_get_crt_expiry_date);
 
+time_t ASN1_GetTimeT(ASN1_TIME* time);
+
 #define PEM_SSLUTILS_VERSION "1.2"
 
 /* On module load, make sure SSL error strings are available. */
@@ -1117,6 +1119,10 @@ openssl_is_crt_expire_on(PG_FUNCTION_ARGS)
 	X509			*cert = NULL;
 	ASN1_TIME		*not_after = NULL;
 	char			*err = NULL;
+	FILE			*fp_cert_file = NULL;
+	TimestampTz 		cmp_time;
+	time_t 			t;
+	int 			retVal = 1;
 
 	if (PG_ARGISNULL(0))
 	{
@@ -1125,7 +1131,7 @@ openssl_is_crt_expire_on(PG_FUNCTION_ARGS)
 	}
 
 	cert_file_path = PG_GETARG_TEXT_PP(0);
-	FILE *fp_cert_file = fopen(text_to_cstring(cert_file_path), "r");
+	fp_cert_file = fopen(text_to_cstring(cert_file_path), "r");
 	if (!fp_cert_file)
 	{
 		err = "FILE_OPEN_CA_CERT";
@@ -1152,11 +1158,11 @@ openssl_is_crt_expire_on(PG_FUNCTION_ARGS)
 		goto out;
 	}
 
-	TimestampTz cmp_time = PG_GETARG_TIMESTAMPTZ(1);
+	cmp_time = PG_GETARG_TIMESTAMPTZ(1);
 	// Convert timestamptz to time_t for comparision.
-	time_t t= timestamptz_to_time_t(cmp_time);
+	t = timestamptz_to_time_t(cmp_time);
 	// Compare the end date of certificate with given date.
-	int retVal = X509_cmp_time(not_after, &t);
+	retVal = X509_cmp_time(not_after, &t);
 
 	/* Get out, while trying not to leak memory. */
 out:
@@ -1205,6 +1211,7 @@ openssl_revoke_certificate(PG_FUNCTION_ARGS)
 	char       *ca_cert_file = "ca_certificate.crt";
 	char       *ca_key_file = "ca_key.key";
 	char       *revoke_cert_db_file = "revoke_cert.db";
+	int 	   ret = 0;
 
 	if (PG_ARGISNULL(0) || PG_ARGISNULL(1))
 	{
@@ -1244,7 +1251,7 @@ openssl_revoke_certificate(PG_FUNCTION_ARGS)
 	}
 
 	// First add certificate to database file index.txt which contains list of revoke certificates.
-	int ret = revoke(revoke_cert_db_file, x);
+	ret = revoke(revoke_cert_db_file, x);
 	if (ret == -1)
 	{
 		err = "ADD_CERT_TO_DB_FILE";
@@ -1508,6 +1515,9 @@ openssl_get_crt_expiry_date(PG_FUNCTION_ARGS)
 	X509			*cert = NULL;
 	ASN1_TIME		*not_after = NULL;
 	char			*err = NULL;
+	FILE 			*fp_cert_file = NULL;
+	time_t			tNotAfter;
+	TimestampTz 		timeTZ = 0;
 
 	if (PG_ARGISNULL(0))
 	{
@@ -1516,7 +1526,7 @@ openssl_get_crt_expiry_date(PG_FUNCTION_ARGS)
 	}
 
 	cert_file_path = PG_GETARG_TEXT_PP(0);
-	FILE *fp_cert_file = fopen(text_to_cstring(cert_file_path), "r");
+	fp_cert_file = fopen(text_to_cstring(cert_file_path), "r");
 	if (!fp_cert_file)
 	{
 		err = "FILE_OPEN_CA_CERT";
@@ -1538,9 +1548,9 @@ openssl_get_crt_expiry_date(PG_FUNCTION_ARGS)
 	}
 
 	// Convert ASN1_TIME to time_t.
-	time_t tNotAfter = ASN1_GetTimeT(not_after);
+	tNotAfter = ASN1_GetTimeT(not_after);
 	// Convert time_t to TimestampTz.
-	TimestampTz timeTZ = time_t_to_timestamptz(tNotAfter);
+	timeTZ = time_t_to_timestamptz(tNotAfter);
 
 	/* Get out, while trying not to leak memory. */
 out:
