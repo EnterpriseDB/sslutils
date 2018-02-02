@@ -1343,28 +1343,32 @@ openssl_revoke_certificate(PG_FUNCTION_ARGS)
 		if (line[0] != 'R')
 			continue;
 
-		char fileds[6][64];
+		char fields[6][64];
 		char* sep = "\t";
 		char* token;
 		int k = 0;
 		char* p = line;
+		X509_REVOKED *r = NULL;
+		ASN1_INTEGER *tmpser = NULL;
+		int retVal = 0;
+
 		while ((token = string_sep(&p, sep)) != NULL)
 		{
-			strcpy(fileds[k++], token);
+			strcpy(fields[k++], token);
 		}
 
-		X509_REVOKED* r = X509_REVOKED_new();
+		r = X509_REVOKED_new();
 		if (r == NULL)
 			goto out;
 
-		int retVal = make_revoked(r, fileds[DB_rev_date]);
+		retVal = make_revoked(r, fields[DB_rev_date]);
 		if (retVal <= 0)
 			goto out;
-		retVal = BN_hex2bn(&serial, fileds[DB_serial]);
+		retVal = BN_hex2bn(&serial, fields[DB_serial]);
 		if (retVal <= 0)
 			goto out;
 
-		ASN1_INTEGER* tmpser = BN_to_ASN1_INTEGER(serial, NULL);
+		tmpser = BN_to_ASN1_INTEGER(serial, NULL);
 		BN_free(serial);
 		serial = NULL;
 
