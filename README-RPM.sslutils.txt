@@ -88,7 +88,7 @@ Param 1: Path to client certificate to be revoked.
 Param 2: CRL file name specified in postgres config file.
 Returns: The CRL.
 
-openssl_get_crt_expiry_date()
+openssl_get_crt_expiry_date(text)
 
 Purpose: Get the certificate expiry date.
 Param1:  Path to certificate.

@@ -1120,9 +1120,9 @@ openssl_is_crt_expire_on(PG_FUNCTION_ARGS)
 	ASN1_TIME		*not_after = NULL;
 	char			*err = NULL;
 	FILE			*fp_cert_file = NULL;
-	TimestampTz 		cmp_time;
-	time_t 			t;
-	int 			retVal = 1;
+	TimestampTz		cmp_time;
+	time_t			t;
+	int			retVal = 1;
 
 	if (PG_ARGISNULL(0))
 	{
@@ -1211,7 +1211,7 @@ openssl_revoke_certificate(PG_FUNCTION_ARGS)
 	char       *ca_cert_file = "ca_certificate.crt";
 	char       *ca_key_file = "ca_key.key";
 	char       *revoke_cert_db_file = "revoke_cert.db";
-	int 	   ret = 0;
+	int        ret = 0;
 
 	if (PG_ARGISNULL(0) || PG_ARGISNULL(1))
 	{
@@ -1519,9 +1519,9 @@ openssl_get_crt_expiry_date(PG_FUNCTION_ARGS)
 	X509			*cert = NULL;
 	ASN1_TIME		*not_after = NULL;
 	char			*err = NULL;
-	FILE 			*fp_cert_file = NULL;
+	FILE			*fp_cert_file = NULL;
 	time_t			tNotAfter;
-	TimestampTz 		timeTZ = 0;
+	TimestampTz		timeTZ = 0;
 
 	if (PG_ARGISNULL(0))
 	{
