@@ -1213,6 +1213,15 @@ openssl_revoke_certificate(PG_FUNCTION_ARGS)
 	char       *revoke_cert_db_file = "revoke_cert.db";
 	int        ret = 0;
 
+	char fields[6][64];
+	char* sep = "\t";
+	char* token = NULL;
+	int k = 0;
+	char* p = NULL;
+	X509_REVOKED *r = NULL;
+	ASN1_INTEGER *tmpser = NULL;
+	int retVal = 0;
+
 	if (PG_ARGISNULL(0) || PG_ARGISNULL(1))
 	{
 		err = "INVALID_ARGUMENTS";
@@ -1343,14 +1352,8 @@ openssl_revoke_certificate(PG_FUNCTION_ARGS)
 		if (line[0] != 'R')
 			continue;
 
-		char fields[6][64];
-		char* sep = "\t";
-		char* token;
-		int k = 0;
-		char* p = line;
-		X509_REVOKED *r = NULL;
-		ASN1_INTEGER *tmpser = NULL;
-		int retVal = 0;
+		memset(fields, 0, 256);
+		p = line;
 
 		while ((token = string_sep(&p, sep)) != NULL)
 		{
