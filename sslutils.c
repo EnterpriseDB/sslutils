@@ -99,16 +99,16 @@ report_openssl_error(char *where)
 
 static char* string_sep(char **stringp, const char *delim)
 {
-    char *start = *stringp, *p = start ? strpbrk(start, delim) : NULL;
+	char *start = *stringp, *p = start ? strpbrk(start, delim) : NULL;
 
-    if (!p) {
-        *stringp = NULL;
-    } else {
-        *p = 0;
-        *stringp = p + 1;
-    }
+	if (!p) {
+		*stringp = NULL;
+	} else {
+		*p = 0;
+		*stringp = p + 1;
+	}
 
-    return start;
+	return start;
 }
 
 /*
@@ -148,7 +148,7 @@ static int revoke(const char* dbfile, X509* x)
 	char* rev_str = NULL;
 	BIGNUM* bn = NULL;
 	char* row[DB_NUMBER];
-        FILE *f = NULL;
+	FILE *revoke_file = NULL;
 	char line[512] = {0};
 
 	for (i = 0; i < DB_NUMBER; i++)
@@ -171,13 +171,13 @@ static int revoke(const char* dbfile, X509* x)
 		return -1;
 
 	// open database file in append to add certificate to be revoked.
-	f = fopen(dbfile, "a+");
-	if (f == NULL)
+	revoke_file = fopen(dbfile, "a+");
+	if (revoke_file == NULL)
 		return -1;
 
 	// Lookup whether the client cert has been revoke by serial number
 	// and rotate the index.txt
-	while (fgets(line, 512, f))
+	while (fgets(line, 512, revoke_file))
 	{
 		char* sep = "\t";
 		char* token;
@@ -191,7 +191,7 @@ static int revoke(const char* dbfile, X509* x)
 				if (strcmp(row[DB_serial], token) == 0)
 				{
 					// serial number already found in CRL file.
-					fclose(f);
+					fclose(revoke_file);
 					return -1;
 				}
 				break;
@@ -229,14 +229,14 @@ static int revoke(const char* dbfile, X509* x)
 	{
 		if (row[i] != NULL)
 		{
-			fwrite(row[i], strlen(row[i]), 1, f);
-			fwrite("\t", 1, 1, f);
+			fwrite(row[i], strlen(row[i]), 1, revoke_file);
+			fwrite("\t", 1, 1, revoke_file);
 			OPENSSL_free(row[i]);
 		}
 	}
-	fwrite("\n", 1, 1, f);
+	fwrite("\n", 1, 1, revoke_file);
 
-	fclose(f);
+	fclose(revoke_file);
 	return 0;
 }
 
@@ -693,8 +693,8 @@ openssl_csr_to_crt(PG_FUNCTION_ARGS)
 	long       len;
 	text       *res = NULL;
 
-	FILE       *fp_cert_file = NULL;
-	FILE       *fp_key = NULL;
+	BIO        *bio_cert_file = NULL;
+	BIO        *bio_key = NULL;
 
 	X509           *certificate = NULL;
 	EVP_PKEY       *pkey = NULL;
@@ -716,13 +716,13 @@ openssl_csr_to_crt(PG_FUNCTION_ARGS)
 		ca_cert_file_path = PG_GETARG_TEXT_PP(1);
 
 		/* Get the CA certificate */
-		fp_cert_file = fopen(text_to_cstring(ca_cert_file_path), "r");
-		if (!fp_cert_file)
+		bio_cert_file = BIO_new_file(text_to_cstring(ca_cert_file_path), "r");
+		if (!bio_cert_file)
 		{
 			err = "FILE_OPEN_CA_CERT";
 			goto out;
 		}
-		ca_cert = PEM_read_X509(fp_cert_file, NULL, NULL, NULL);
+		ca_cert = PEM_read_bio_X509(bio_cert_file, NULL, NULL, NULL);
 		if (!ca_cert)
 		{
 			err = "PEM_read_X509";
@@ -738,13 +738,13 @@ openssl_csr_to_crt(PG_FUNCTION_ARGS)
 	ca_key_file_path = PG_GETARG_TEXT_PP(2);
 
 	/* Get the CA private key */
-	fp_key = fopen(text_to_cstring(ca_key_file_path), "r");
-	if (!fp_key)
+	bio_key = BIO_new_file(text_to_cstring(ca_key_file_path), "r");
+	if (!bio_key)
 	{
 		err = "FILE_OPEN_CA_KEY";
 		goto out;
 	}
-	ca_key = PEM_read_RSAPrivateKey(fp_key, NULL, NULL, NULL);
+	ca_key = PEM_read_bio_RSAPrivateKey(bio_key, NULL, NULL, NULL);
 	if (!ca_key)
 	{
 		err = "PEM_read_RSAPrivateKey";
@@ -930,10 +930,10 @@ out:
 		ASN1_INTEGER_free(serial_no);
 	if (err != NULL)
 		report_openssl_error(err);
-	if (fp_cert_file != NULL)
-		fclose(fp_cert_file);
-	if (fp_key != NULL)
-		fclose(fp_key);
+	if (bio_cert_file != NULL)
+		BIO_free(bio_cert_file);
+	if (bio_key != NULL)
+		BIO_free(bio_key);
 	PG_RETURN_TEXT_P(res);
 }
 
@@ -954,8 +954,8 @@ openssl_rsa_generate_crl(PG_FUNCTION_ARGS)
 	long       len;
 	text       *res = NULL;
 
-	FILE       *fp_cert_file = NULL;
-	FILE       *fp_key = NULL;
+	BIO        *bio_cert_file = NULL;
+	BIO        *bio_key = NULL;
 
 	X509_CRL       *crl = NULL;
 	EVP_PKEY       *pkey = NULL;
@@ -967,13 +967,13 @@ openssl_rsa_generate_crl(PG_FUNCTION_ARGS)
 		ca_cert_file_path = PG_GETARG_TEXT_PP(0);
 
 		/* Get the CA crl */
-		fp_cert_file = fopen(text_to_cstring(ca_cert_file_path), "r");
-		if (!fp_cert_file)
+		bio_cert_file = BIO_new_file(text_to_cstring(ca_cert_file_path), "r");
+		if (!bio_cert_file)
 		{
 			err = "FILE_OPEN_CA_CERT";
 			goto out;
 		}
-		ca_cert = PEM_read_X509(fp_cert_file, NULL, NULL, NULL);
+		ca_cert = PEM_read_bio_X509(bio_cert_file, NULL, NULL, NULL);
 		if (!ca_cert)
 		{
 			err = "PEM_read_X509";
@@ -989,13 +989,13 @@ openssl_rsa_generate_crl(PG_FUNCTION_ARGS)
 	ca_key_file_path = PG_GETARG_TEXT_PP(1);
 
 	/* Get the CA private key */
-	fp_key = fopen(text_to_cstring(ca_key_file_path), "r");
-	if (!fp_key)
+	bio_key = BIO_new_file(text_to_cstring(ca_key_file_path), "r");
+	if (!bio_key)
 	{
 		err = "FILE_OPEN_CA_KEY";
 		goto out;
 	}
-	ca_key = PEM_read_RSAPrivateKey(fp_key, NULL, NULL, NULL);
+	ca_key = PEM_read_bio_RSAPrivateKey(bio_key, NULL, NULL, NULL);
 	if (!ca_key)
 	{
 		err = "PEM_read_RSAPrivateKey";
@@ -1089,10 +1089,10 @@ out:
 		ASN1_TIME_free(tmptm);
 	if (err != NULL)
 		report_openssl_error(err);
-	if (fp_cert_file != NULL)
-		fclose(fp_cert_file);
-	if (fp_key != NULL)
-		fclose(fp_key);
+	if (bio_cert_file != NULL)
+		BIO_free(bio_cert_file);
+	if (bio_key != NULL)
+		BIO_free(bio_key);
 	PG_RETURN_TEXT_P(res);
 }
 
@@ -1194,9 +1194,9 @@ openssl_revoke_certificate(PG_FUNCTION_ARGS)
 	X509_NAME  *xn = NULL;
 	X509       *x = NULL;
 	BIGNUM     *serial = NULL;
-	FILE       *f = NULL;
-	FILE       *f1 = NULL;
 
+	BIO        *bio_ca_cert = NULL;
+	BIO        *bio_ca_key = NULL;
 	BIO        *bio = NULL;
 	char       *err = NULL;
 	char       *data = NULL;
@@ -1211,6 +1211,7 @@ openssl_revoke_certificate(PG_FUNCTION_ARGS)
 	char       *ca_cert_file = "ca_certificate.crt";
 	char       *ca_key_file = "ca_key.key";
 	char       *revoke_cert_db_file = "revoke_cert.db";
+	FILE       *file_revoke_cert_db = NULL;
 	int        ret = 0;
 
 	char fields[6][64];
@@ -1275,15 +1276,16 @@ openssl_revoke_certificate(PG_FUNCTION_ARGS)
 		goto out;
 	}
 
-	f = fopen(ca_cert_file, "r");
-	if (f == NULL)
+	bio_ca_cert = BIO_new_file(ca_cert_file, "r");
+	if (bio_ca_cert == NULL)
 	{
 		err = "FILE_OPEN_CA_CERT";
 		goto out;
 	}
 
-	PEM_read_X509(f, &cacert, NULL, NULL);
-	fclose(f);
+	PEM_read_bio_X509(bio_ca_cert, &cacert, NULL, NULL);
+	BIO_free(bio_ca_cert);
+	bio_ca_cert = NULL;
 
 	/* load cakey */
 	pkey = EVP_PKEY_new();
@@ -1293,15 +1295,16 @@ openssl_revoke_certificate(PG_FUNCTION_ARGS)
 		goto out;
 	}
 
-	f = fopen(ca_key_file, "r");
-	if (f == NULL)
+	bio_ca_key = BIO_new_file(ca_key_file, "r");
+	if (bio_ca_key == NULL)
 	{
 		err = "ERROR_OPEN_CA_KEY";
 		goto out;
 	}
 
-	PEM_read_PrivateKey(f, &pkey, NULL, NULL);
-	fclose(f);
+	PEM_read_bio_PrivateKey(bio_ca_key, &pkey, NULL, NULL);
+	BIO_free(bio_ca_key);
+	bio_ca_key = NULL;
 
 	crl = X509_CRL_new();
 	if (crl == NULL)
@@ -1340,14 +1343,14 @@ openssl_revoke_certificate(PG_FUNCTION_ARGS)
 	 * Read every serial number from revoke certificate db file and create a
 	 * X509_REVOKED: r with serial number, and insert r to CRL.
 	 */
-	f1 = fopen(revoke_cert_db_file, "r");
-	if (f1 == NULL)
+	file_revoke_cert_db = fopen(revoke_cert_db_file, "r");
+	if (file_revoke_cert_db == NULL)
 	{
 		err = "ERROR_OPEN_DB_FILE";
 		goto out;
 	}
 
-	while (fgets(line, 512, f1))
+	while (fgets(line, 512, file_revoke_cert_db))
 	{
 		if (line[0] != 'R')
 			continue;
@@ -1383,8 +1386,8 @@ openssl_revoke_certificate(PG_FUNCTION_ARGS)
 		X509_CRL_add0_revoked(crl, r);
 	}
 
-	fclose(f1);
-	f1 = NULL;
+	fclose(file_revoke_cert_db);
+	file_revoke_cert_db = NULL;
 	X509_CRL_sort(crl);
 
 	/* Sign the CRL */
@@ -1461,8 +1464,8 @@ out:
 		OPENSSL_free(cert_data);
 	if (crl_file_buffer)
 		OPENSSL_free(crl_file_buffer);
-	if (f1 != NULL)
-		fclose(f1);
+	if (file_revoke_cert_db != NULL)
+		fclose(file_revoke_cert_db);
 	if (err != NULL)
 		report_openssl_error(err);
 
@@ -1522,7 +1525,7 @@ openssl_get_crt_expiry_date(PG_FUNCTION_ARGS)
 	X509			*cert = NULL;
 	ASN1_TIME		*not_after = NULL;
 	char			*err = NULL;
-	FILE			*fp_cert_file = NULL;
+	BIO				*bio_cert_file = NULL;
 	time_t			tNotAfter;
 	TimestampTz		timeTZ = 0;
 
@@ -1533,14 +1536,14 @@ openssl_get_crt_expiry_date(PG_FUNCTION_ARGS)
 	}
 
 	cert_file_path = PG_GETARG_TEXT_PP(0);
-	fp_cert_file = fopen(text_to_cstring(cert_file_path), "r");
-	if (!fp_cert_file)
+	bio_cert_file = BIO_new_file(text_to_cstring(cert_file_path), "r");
+	if (!bio_cert_file)
 	{
 		err = "FILE_OPEN_CA_CERT";
 		goto out;
 	}
 
-	cert = PEM_read_X509(fp_cert_file, NULL, NULL, NULL);
+	cert = PEM_read_bio_X509(bio_cert_file, NULL, NULL, NULL);
 	if (!cert)
 	{
 		err = "PEM_read_X509";
@@ -1563,8 +1566,8 @@ openssl_get_crt_expiry_date(PG_FUNCTION_ARGS)
 out:
 	if (cert != NULL)
 		X509_free(cert);
-	if (fp_cert_file != NULL)
-		fclose(fp_cert_file);
+	if (bio_cert_file != NULL)
+		BIO_free(bio_cert_file);
 	if (err != NULL)
 		report_openssl_error(err);
 
