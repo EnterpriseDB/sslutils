@@ -452,13 +452,16 @@ err:
 Datum
 openssl_rsa_generate_key(PG_FUNCTION_ARGS)
 {
-	int			bits = PG_GETARG_INT32(0);
-	RSA		   *rsa = NULL;
-	BIO		   *bio = NULL;
-	char	   *err = NULL;
-	char	   *data = NULL;
-	long		len;
-	text	   *res = NULL;
+	int		 bits = PG_GETARG_INT32(0);
+	int		 ret = 0;
+	RSA		*rsa = NULL;
+	BIO		*bio = NULL;
+	const char	*err = NULL;
+	char		*data = NULL;
+	long		 len;
+	text		*res = NULL;
+	BIGNUM		*bne = NULL;
+	unsigned long	 rsa_f4 = RSA_F4;
 
 	/*
 	 * Don't allow too many bits.  It takes a long time, and since
@@ -470,9 +473,21 @@ openssl_rsa_generate_key(PG_FUNCTION_ARGS)
 		        (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
 		         errmsg("maximum number of bits is 8192")));
 
+	bne = BN_new();
+	ret = BN_set_word(bne, rsa_f4);
+
+	if(ret != 1)
+	{
+		err = "BN_set_word";
+		goto out;
+	}
+
+
 	/* Generate key. */
-	rsa = RSA_generate_key(bits, 65537, NULL, NULL);
-	if (!rsa)
+	rsa = RSA_new();
+	ret = RSA_generate_key_ex(rsa, bits, bne, NULL);
+
+	if (ret != 1)
 	{
 		err = "RSA_generate_key";
 		goto out;
@@ -499,12 +514,14 @@ openssl_rsa_generate_key(PG_FUNCTION_ARGS)
 
 	/* Get out, while trying not to leak memory. */
 out:
+	if (bne != NULL)
+		BN_free(bne);
 	if (bio != NULL)
 		BIO_free(bio);
 	if (rsa != NULL)
 		RSA_free(rsa);
 	if (err != NULL)
-		report_openssl_error(err);
+		report_openssl_error((char *)err);
 	PG_RETURN_TEXT_P(res);
 }
 
@@ -702,8 +719,7 @@ openssl_csr_to_crt(PG_FUNCTION_ARGS)
 	ASN1_INTEGER   *serial_no = NULL;
 	BIGNUM         *bn = NULL;
 	X509V3_CTX     ctx;
-	X509_CINF *xi = NULL;
-	X509_NAME *xn;
+	X509_NAME *xn = NULL;
 
 	if (PG_ARGISNULL(0))
 	{
@@ -785,7 +801,6 @@ openssl_csr_to_crt(PG_FUNCTION_ARGS)
 		err = "Error_creating_certificate";
 		goto out;
 	}
-	xi = certificate->cert_info;
 	xn = X509_REQ_get_subject_name(req);
 	if (!xn)
 	{
@@ -798,13 +813,13 @@ openssl_csr_to_crt(PG_FUNCTION_ARGS)
 		goto out;
 	}
 
-	if (!X509_gmtime_adj(xi->validity->notBefore, 0))
+	if (!X509_gmtime_adj(X509_get_notBefore(certificate), 0))
 	{
 		err = "Error_setting_validity_before_time";
 		goto out;
 	}
 
-	if (!X509_gmtime_adj(xi->validity->notAfter, (long)60 * 60 * 24 * VALIDITY_DAYS))
+	if (!X509_gmtime_adj(X509_get_notAfter(certificate), (long)60 * 60 * 24 * VALIDITY_DAYS))
 	{
 		err = "Error_setting_validity_before_time";
 		goto out;
