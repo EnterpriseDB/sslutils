@@ -1,3 +1,18 @@
+/*-------------------------------------------------------------------------
+ *
+ * Postgres Enterprise Manager - Openssl utils plugin
+ *
+ * Copyright (C) 2011 - 2019, EnterpriseDB Corporation. All rights reserved.
+ *
+ * This code is licensed under the EnterpriseDB Limited Use License for use
+ * by customers with an active subscription to EDB Postgres Standard,
+ * Enterprise or Developer Edition.
+ *
+ * Redistribution is strictly prohibited.
+ *
+ *-------------------------------------------------------------------------
+ */
+
 /*
  * OpenSSL library access from PostgreSQL
  */
