@@ -1,18 +1,18 @@
 EXPORTS
   Pg_magic_func
-  pg_finfo_sslutils_version
-  pg_finfo_openssl_rsa_generate_key
-  pg_finfo_openssl_rsa_key_to_csr
-  pg_finfo_openssl_csr_to_crt
-  sslutils_version
-  openssl_rsa_generate_key
-  openssl_rsa_key_to_csr
   openssl_csr_to_crt
-  openssl_rsa_generate_crl
+  openssl_get_crt_expiry_date
   openssl_is_crt_expire_on
   openssl_revoke_certificate
-  openssl_get_crt_expiry_date
-  
-  
-  
-
+  openssl_rsa_generate_crl
+  openssl_rsa_generate_key
+  openssl_rsa_key_to_csr
+  pg_finfo_openssl_csr_to_crt
+  pg_finfo_openssl_get_crt_expiry_date
+  pg_finfo_openssl_is_crt_expire_on
+  pg_finfo_openssl_revoke_certificate
+  pg_finfo_openssl_rsa_generate_crl
+  pg_finfo_openssl_rsa_generate_key
+  pg_finfo_openssl_rsa_key_to_csr
+  pg_finfo_sslutils_version
+  sslutils_version
