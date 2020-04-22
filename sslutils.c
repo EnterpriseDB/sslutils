@@ -91,7 +91,7 @@ PG_FUNCTION_INFO_V1(openssl_get_crt_expiry_date);
 
 time_t ASN1_GetTimeT(ASN1_TIME* time);
 
-#define PEM_SSLUTILS_VERSION "1.2"
+#define PEM_SSLUTILS_VERSION "1.3"
 
 /* On module load, make sure SSL error strings are available. */
 void
@@ -816,6 +816,11 @@ openssl_csr_to_crt(PG_FUNCTION_ARGS)
 		err = "Error_creating_certificate";
 		goto out;
 	}
+	// set version to X509 v3 certificate
+	if (!X509_set_version(certificate, 2)) {
+		err = "Error_setting_certificate_version";
+		goto out;
+	}
 	xn = X509_REQ_get_subject_name(req);
 	if (!xn)
 	{
@@ -919,7 +924,7 @@ openssl_csr_to_crt(PG_FUNCTION_ARGS)
 		X509_add_ext(certificate, extension, -1);
 	}
 
-	if (!X509_sign(certificate, pkey, EVP_sha1()))
+	if (!X509_sign(certificate, pkey, EVP_sha256()))
 	{
 		err = "Error_signing_certificate";
 		goto out;
@@ -1082,7 +1087,7 @@ openssl_rsa_generate_crl(PG_FUNCTION_ARGS)
 	X509_CRL_sort(crl);
 
 	/* Sign the CRL */
-	if (!X509_CRL_sign(crl, pkey, EVP_sha1()))
+	if (!X509_CRL_sign(crl, pkey, EVP_sha256()))
 	{
 		err = "Error_signing_crl";
 		goto out;
@@ -1421,7 +1426,7 @@ openssl_revoke_certificate(PG_FUNCTION_ARGS)
 	X509_CRL_sort(crl);
 
 	/* Sign the CRL */
-	if (!X509_CRL_sign(crl, pkey, EVP_sha1()))
+	if (!X509_CRL_sign(crl, pkey, EVP_sha256()))
 	{
 		err = "Error_signing_crl";
 		goto out;

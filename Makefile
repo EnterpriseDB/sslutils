@@ -1,7 +1,7 @@
 MODULE_big = sslutils
 OBJS = sslutils.o
 DATA_built = sslutils.sql uninstall_sslutils.sql
-DATA = sslutils--1.2.sql sslutils--1.1.sql sslutils--unpackaged--1.0.sql sslutils--1.0--1.1.sql sslutils--1.1--1.2.sql
+DATA = sslutils--1.3.sql sslutils--1.2.sql sslutils--1.1.sql sslutils--unpackaged--1.0.sql sslutils--1.0--1.1.sql sslutils--1.1--1.2.sql sslutils--1.2--1.3.sql sslutils--1.0--1.3.sql sslutils--1.1--1.3.sql sslutils--unpackaged--1.3.sql
 SHLIB_LINK += -lcrypto -lssl
 
 EXTENSION = sslutils
