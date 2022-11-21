@@ -3,14 +3,8 @@
 SSLUTILS_CACHE_DIR=$WD/sslutils/staging
 # Read the various build scripts
 
-# Windows
-if [ $PG_ARCH_WINDOWS = 1 ];
-then
-    source $WD/sslutils/build-windows.sh
-fi
-
 # Windows x64
-if [ $PG_ARCH_WINDOWS_X64 = 1 -a $PG_MAJOR_VERSION != "8.4" ];
+if [ $PG_ARCH_WINDOWS_X64 = 1 ];
 then
     source $WD/sslutils/build-windows-x64.sh
 fi
@@ -38,14 +32,8 @@ _prep_sslutils() {
 
     cp -r $WD/pvt_packages/sslutils $WD/sslutils/source/sslutils
 
-    # Windows
-    if [ $PG_ARCH_WINDOWS = 1 ];
-    then
-        _prep_sslutils_windows 
-    fi
-
     # Windows-x64
-    if [ $PG_ARCH_WINDOWS_X64 = 1 -a $PG_MAJOR_VERSION != "8.4" ];
+    if [ $PG_ARCH_WINDOWS_X64 = 1 ];
     then
         _prep_sslutils_windows_x64 
     fi
@@ -58,14 +46,8 @@ _prep_sslutils() {
 
 _build_sslutils() {
 
-    # Windows
-    if [ $PG_ARCH_WINDOWS = 1 ];
-    then
-        _build_sslutils_windows 
-    fi
-
     # Windows-x64
-    if [ $PG_ARCH_WINDOWS_X64 = 1 -a $PG_MAJOR_VERSION != "8.4" ];
+    if [ $PG_ARCH_WINDOWS_X64 = 1 ];
     then
         _build_sslutils_windows_x64 
     fi
@@ -82,14 +64,8 @@ _postprocess_sslutils() {
 
     cd $WD/sslutils
 
-    # Windows
-    if [ $PG_ARCH_WINDOWS = 1 ];
-    then
-        _postprocess_sslutils_windows 
-    fi
-
     # Windows-x64
-    if [ $PG_ARCH_WINDOWS_X64 = 1 -a $PG_MAJOR_VERSION != "8.4" ];
+    if [ $PG_ARCH_WINDOWS_X64 = 1 ];
     then
         _postprocess_sslutils_windows_x64 
     fi
