@@ -27,7 +27,7 @@ _prep_sslutils() {
 
     mkdir -p $WD/sslutils/source
 
-    cd $WD/pvt_packages/PEM
+    cd $WD/pvt_packages/${C_PKG_NAME}
     git pull
 
     cp -r $WD/pvt_packages/sslutils $WD/sslutils/source/sslutils
