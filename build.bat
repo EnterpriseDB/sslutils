@@ -2,11 +2,6 @@
 
 SET PPSP_BUILD_ERROR=
 
-REM ----- Visual Studio Environment Check
-vcbuild /? > nul 2>&1
-
-IF NOT "%ERRORLEVEL%" == "0" SET PPSP_BUILD_ERROR=Please set the environments properly for the Visual Studio && GOTO error
-
 REM ------ PostgreSQL/AS PATH Check
 IF "%PGPATH%" == "" SET PPSP_BUILD_ERROR=Set the 'PGPATH' environment variable. && GOTO error
 
@@ -19,17 +14,29 @@ GOTO build
  IF "%PGLIBPATH%" == "" SET PGLIBPATH=%PGPATH%\lib
  GOTO build
 
-
 :build
-echo %PGSHAREPATH%
-echo %PGLIBPATH%
+ REM ----- Visual Studio Environment Check
+ vcbuild /? > nul 2>&1
+ IF "%ERRORLEVEL%" == "0" GOTO use_vcbuild
+ msbuild /? > nul 2>&1
+ IF "%ERRORLEVEL%" == "0" GOTO use_msbuild
+ SET PPSP_BUILD_ERROR=Please set the environments properly for the Visual Studio
+ GOTO error
+
+:use_vcbuild
  vcbuild sslutils.proj %*
  IF NOT "%ERRORLEVEL%" == "0" SET PPSP_BUILD_ERROR="Failed to build sslutils" && GOTO error
  IF NOT EXIST "sslutils.dll" SET PPSP_BUILD_ERROR="Failed to generate the sslutils.dll" && GOTO error
  IF NOT EXIST "sslutils.sql" SET PPSP_BUILD_ERROR="Failed to generate the sslutils.sql" && GOTO error
  IF NOT EXIST "uninstall_sslutils.sql" SET PPSP_BUILD_ERROR="Failed to generate the uninstall_sslutils.sql" && GOTO error
+ GOTO end
 
- echo "Successfully Build sslutils"
+:use_msbuild
+ msbuild sslutils.proj %*
+ IF NOT "%ERRORLEVEL%" == "0" SET PPSP_BUILD_ERROR="Failed to build sslutils" && GOTO error
+ IF NOT EXIST "sslutils.dll" SET PPSP_BUILD_ERROR="Failed to generate the sslutils.dll" && GOTO error
+ IF NOT EXIST "sslutils.sql" SET PPSP_BUILD_ERROR="Failed to generate the sslutils.sql" && GOTO error
+ IF NOT EXIST "uninstall_sslutils.sql" SET PPSP_BUILD_ERROR="Failed to generate the uninstall_sslutils.sql" && GOTO error
  GOTO end
 
 :error
@@ -38,4 +45,4 @@ echo %PGLIBPATH%
  exit 1
 
 :end
-
+ echo "Successfully Build sslutils"

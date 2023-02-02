@@ -1,2 +1,12 @@
 /sslutils.sql
+/uninstall_sslutils.sql
+
+# *nix shared library
 /sslutils.so
+
+# Windows specific files
+/flist
+/sslutils.dll
+/sslutils.exp
+/sslutils.lib
+/sslutils.obj

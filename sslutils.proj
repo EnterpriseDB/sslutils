@@ -22,14 +22,14 @@
         <When Condition="'$(DEBUG)'=='1'">
           <PropertyGroup>
             <XTRA_CFLAGS>/Od /MDd /Zi /D "DEBUG=1" /D "_DEBUG"</XTRA_CFLAGS>
-            <XTRA_LDFLAGS>/DEBUG /defaultlib:$(PGPATH)\lib\postgres.lib /defaultlib:$(OPENSSLPATH)\lib\libssl.lib  /defaultlib:$(OPENSSLPATH)\lib\libcrypto.lib</XTRA_LDFLAGS>
+            <XTRA_LDFLAGS>/DEBUG /defaultlib:$(PGPATH)\lib\$(PGLIB_PREFIX)postgres.lib /defaultlib:$(OPENSSLPATH)\lib\libssl.lib  /defaultlib:$(OPENSSLPATH)\lib\libcrypto.lib</XTRA_LDFLAGS>
           </PropertyGroup>
         </When>
         <Otherwise>
           <PropertyGroup>
             <DEBUG>0</DEBUG>
             <XTRA_CFLAGS>/Ox /MD /GF</XTRA_CFLAGS>
-            <XTRA_LDFLAGS>/defaultlib:$(PGPATH)\lib\postgres.lib /defaultlib:$(OPENSSLPATH)\lib\libssl.lib  /defaultlib:$(OPENSSLPATH)\lib\libcrypto.lib</XTRA_LDFLAGS>
+            <XTRA_LDFLAGS>/defaultlib:$(PGPATH)\lib\$(PGLIB_PREFIX)postgres.lib /defaultlib:$(OPENSSLPATH)\lib\libssl.lib  /defaultlib:$(OPENSSLPATH)\lib\libcrypto.lib</XTRA_LDFLAGS>
           </PropertyGroup>
         </Otherwise>
       </Choose>
@@ -53,14 +53,14 @@
         <When Condition="'$(DEBUG)'=='1'">
           <PropertyGroup>
             <XTRA_CFLAGS>/Od /MDd /Zi /D "DEBUG=1" /D "_DEBUG"</XTRA_CFLAGS>
-            <XTRA_LDFLAGS>/DEBUG /defaultlib:$(PGPATH)\Debug\postgres\postgres.lib /defaultlib:$(OPENSSLPATH)\lib\libssl.lib  /defaultlib:$(OPENSSLPATH)\lib\libcrypto.lib</XTRA_LDFLAGS>
+            <XTRA_LDFLAGS>/DEBUG /defaultlib:$(PGPATH)\Debug\postgres\$(PGLIB_PREFIX)postgres.lib /defaultlib:$(OPENSSLPATH)\lib\libssl.lib  /defaultlib:$(OPENSSLPATH)\lib\libcrypto.lib</XTRA_LDFLAGS>
           </PropertyGroup>
         </When>
         <Otherwise>
           <PropertyGroup>
             <DEBUG>0</DEBUG>
             <XTRA_CFLAGS>/Ox /MD /GF</XTRA_CFLAGS>
-            <XTRA_LDFLAGS>/defaultlib:$(PGPATH)\Release\postgres\postgres.lib /defaultlib:$(OPENSSLPATH)\lib\libssl.lib  /defaultlib:$(OPENSSLPATH)\lib\libcrypto.lib</XTRA_LDFLAGS>
+            <XTRA_LDFLAGS>/defaultlib:$(PGPATH)\Release\postgres\$(PGLIB_PREFIX)postgres.lib /defaultlib:$(OPENSSLPATH)\lib\libssl.lib  /defaultlib:$(OPENSSLPATH)\lib\libcrypto.lib</XTRA_LDFLAGS>
           </PropertyGroup>
         </Otherwise>
       </Choose>
@@ -112,8 +112,22 @@
     <Exec Command="copy /Y uninstall_sslutils.sql.in uninstall_sslutils.sql"/>
   </Target>
 
-  <Target Name="install">
+  <Target Name="install" DependsOnTargets="sslutils;sslutils-sql"  Condition="'$(INSTALL_PREFIX)' != ''">
+    <ItemGroup>
+      <ContribFiles Include="sslutils.sql;uninstall_sslutils.sql"/>
+    </ItemGroup>
+    <ItemGroup>
+      <ExtensionFiles Include="sslutils--1.3.sql;sslutils--1.2.sql;sslutils--1.1.sql;sslutils--unpackaged--1.0.sql;sslutils--1.0--1.1.sql;sslutils--1.1--1.2.sql;sslutils--1.2--1.3.sql;sslutils--1.0--1.3.sql;sslutils--1.1--1.3.sql;sslutils--unpackaged--1.3.sql;sslutils.control"/>
+    </ItemGroup>
+
     <Message Text="Please copy the dll, sql(s) &amp; control files "/>
+    <MakeDir Directories="$(INSTALL_PREFIX)\lib"/>
+    <MakeDir Directories="$(INSTALL_PREFIX)\share\extension"/>
+    <MakeDir Directories="$(INSTALL_PREFIX)\doc"/>
+    <Copy SourceFiles="sslutils.dll" DestinationFolder="$(INSTALL_PREFIX)\lib"/>
+    <Copy SourceFiles="@(ContribFiles)" DestinationFolder="$(INSTALL_PREFIX)\share"/>
+    <Copy SourceFiles="@(ExtensionFiles)" DestinationFolder="$(INSTALL_PREFIX)\share\extension"/>
+    <Copy SourceFiles="README.sslutils" DestinationFolder="$(INSTALL_PREFIX)\doc"/>
   </Target>
 
   <Target Name="clean">
