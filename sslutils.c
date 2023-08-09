@@ -31,7 +31,7 @@
 #include "utils/builtins.h"
 #include "utils/datetime.h"
 
-// Start from PG-16, VARDATA_ANY was moved from postgres.hto varatt.h
+// Start from PG-16, VARDATA_ANY was moved from postgres.h to varatt.h
 #if PG_VERSION_NUM >= 160000
 #include "varatt.h"
 #endif
