@@ -4,11 +4,11 @@
   <Choose>
     <When Condition="'$(USE_PGXS)'=='1'">
       <ItemGroup>
-        <ClCommand Include="/I$(PGPATH)\include" />
-        <ClCommand Include="/I$(PGPATH)\include\server" />
-        <ClCommand Include="/I$(PGPATH)\include\server\port\win32" />
-        <ClCommand Include="/I$(PGPATH)\include\server\port\win32_msvc" />
-        <ClCommand Include="/I$(PGPATH)\include\server\port" />
+        <ClCommand Include="/I&quot;$(PGPATH)\include&quot;" />
+        <ClCommand Include="/I&quot;$(PGPATH)\include\server&quot;" />
+        <ClCommand Include="/I&quot;$(PGPATH)\include\server\port\win32&quot;" />
+        <ClCommand Include="/I&quot;$(PGPATH)\include\server\port\win32_msvc&quot;" />
+        <ClCommand Include="/I&quot;$(PGPATH)\include\server\port&quot;" />
         <ClCommand Include="/I$(OPENSSLPATH)\include" />
         <ClCommand Include="/I$(GETTEXTPATH)\include" />
       </ItemGroup>
@@ -22,24 +22,24 @@
         <When Condition="'$(DEBUG)'=='1'">
           <PropertyGroup>
             <XTRA_CFLAGS>/Od /MDd /Zi /D "DEBUG=1" /D "_DEBUG"</XTRA_CFLAGS>
-            <XTRA_LDFLAGS>/DEBUG /defaultlib:$(PGPATH)\lib\$(PGLIB_PREFIX)postgres.lib /defaultlib:$(OPENSSLPATH)\lib\libssl.lib  /defaultlib:$(OPENSSLPATH)\lib\libcrypto.lib</XTRA_LDFLAGS>
+            <XTRA_LDFLAGS>/DEBUG /defaultlib:&quot;$(PGPATH)\lib\$(PGLIB_PREFIX)postgres.lib&quot; /defaultlib:$(OPENSSLPATH)\lib\libssl.lib  /defaultlib:$(OPENSSLPATH)\lib\libcrypto.lib</XTRA_LDFLAGS>
           </PropertyGroup>
         </When>
         <Otherwise>
           <PropertyGroup>
             <DEBUG>0</DEBUG>
             <XTRA_CFLAGS>/Ox /MD /GF</XTRA_CFLAGS>
-            <XTRA_LDFLAGS>/defaultlib:$(PGPATH)\lib\$(PGLIB_PREFIX)postgres.lib /defaultlib:$(OPENSSLPATH)\lib\libssl.lib  /defaultlib:$(OPENSSLPATH)\lib\libcrypto.lib</XTRA_LDFLAGS>
+            <XTRA_LDFLAGS>/defaultlib:&quot;$(PGPATH)\lib\$(PGLIB_PREFIX)postgres.lib&quot; /defaultlib:$(OPENSSLPATH)\lib\libssl.lib  /defaultlib:$(OPENSSLPATH)\lib\libcrypto.lib</XTRA_LDFLAGS>
           </PropertyGroup>
         </Otherwise>
       </Choose>
     </When>
     <Otherwise>
       <ItemGroup>
-        <ClCommand Include="/I$(PGPATH)\src\include" />
-        <ClCommand Include="/I$(PGPATH)\src\include\port\win32" />
-        <ClCommand Include="/I$(PGPATH)\src\include\port\win32_msvc" />
-        <ClCommand Include="/I$(PGPATH)\src\port" />
+        <ClCommand Include="/I&quot;$(PGPATH)\src\include&quot;" />
+        <ClCommand Include="/I&quot;$(PGPATH)\src\include\port\win32&quot;" />
+        <ClCommand Include="/I&quot;$(PGPATH)\src\include\port\win32_msvc&quot;" />
+        <ClCommand Include="/I&quot;$(PGPATH)\src\port&quot;" />
         <ClCommand Include="/I$(OPENSSLPATH)\include" />
         <ClCommand Include="/I$(GETTEXTPATH)\include" />
       </ItemGroup>
@@ -53,14 +53,14 @@
         <When Condition="'$(DEBUG)'=='1'">
           <PropertyGroup>
             <XTRA_CFLAGS>/Od /MDd /Zi /D "DEBUG=1" /D "_DEBUG"</XTRA_CFLAGS>
-            <XTRA_LDFLAGS>/DEBUG /defaultlib:$(PGPATH)\Debug\postgres\$(PGLIB_PREFIX)postgres.lib /defaultlib:$(OPENSSLPATH)\lib\libssl.lib  /defaultlib:$(OPENSSLPATH)\lib\libcrypto.lib</XTRA_LDFLAGS>
+            <XTRA_LDFLAGS>/DEBUG /defaultlib:&quot;$(PGPATH)\Debug\postgres\$(PGLIB_PREFIX)postgres.lib&quot; /defaultlib:$(OPENSSLPATH)\lib\libssl.lib  /defaultlib:$(OPENSSLPATH)\lib\libcrypto.lib</XTRA_LDFLAGS>
           </PropertyGroup>
         </When>
         <Otherwise>
           <PropertyGroup>
             <DEBUG>0</DEBUG>
             <XTRA_CFLAGS>/Ox /MD /GF</XTRA_CFLAGS>
-            <XTRA_LDFLAGS>/defaultlib:$(PGPATH)\Release\postgres\$(PGLIB_PREFIX)postgres.lib /defaultlib:$(OPENSSLPATH)\lib\libssl.lib  /defaultlib:$(OPENSSLPATH)\lib\libcrypto.lib</XTRA_LDFLAGS>
+            <XTRA_LDFLAGS>/defaultlib:&quot;$(PGPATH)\Release\postgres\$(PGLIB_PREFIX)postgres.lib&quot; /defaultlib:$(OPENSSLPATH)\lib\libssl.lib  /defaultlib:$(OPENSSLPATH)\lib\libcrypto.lib</XTRA_LDFLAGS>
           </PropertyGroup>
         </Otherwise>
       </Choose>
