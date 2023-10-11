@@ -76,14 +76,6 @@ static const char* crl_reasons[] = {
 PG_MODULE_MAGIC;
 
 extern void _PG_init(void);
-extern Datum openssl_rsa_generate_key(PG_FUNCTION_ARGS);
-extern Datum openssl_rsa_key_to_csr(PG_FUNCTION_ARGS);
-extern Datum openssl_csr_to_crt(PG_FUNCTION_ARGS);
-extern Datum openssl_rsa_generate_crl(PG_FUNCTION_ARGS);
-extern Datum sslutils_version(PG_FUNCTION_ARGS);
-extern Datum openssl_is_crt_expire_on(PG_FUNCTION_ARGS);
-extern Datum openssl_revoke_certificate(PG_FUNCTION_ARGS);
-extern Datum openssl_get_crt_expiry_date(PG_FUNCTION_ARGS);
 
 PG_FUNCTION_INFO_V1(openssl_rsa_generate_key);
 PG_FUNCTION_INFO_V1(openssl_rsa_key_to_csr);
