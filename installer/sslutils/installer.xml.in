@@ -156,6 +156,7 @@
 								<ruleGroup>
 									<ruleList>
 										<compareText text="${platform_name}" logic="equals" value="windows"/>
+										<compareText text="PG_TYPE_LONG" logic="equals" value="edb"/>
 									</ruleList>
 								</ruleGroup>
 							</ruleList>
@@ -418,6 +419,7 @@
 										<ruleGroup>
 											<ruleList>
 												<compareText text="${platform_name}" logic="equals" value="windows"/>
+												<compareText text="PG_TYPE_LONG" logic="equals" value="edb"/>
 											</ruleList>
 										</ruleGroup>
 									</ruleList>
