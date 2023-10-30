@@ -14,7 +14,7 @@ sslutils.installdir.empty=The installation directory cannot be empty.
 
 sslutils.installdir.error=The installation directory must be an absolute path, containing only letters, numbers and the characters '-', '/', '.' and '_', and must be writable.
 
-sslutils.incompatible.pg.error=The PostgreSQL Server Installation is not compatible with this version of the SSLUtils plugin.
+sslutils.incompatible.pg.error=The PostgreSQL Server Installation is not compatible with this version of the SSLUtils plugin, pgconfig_path: ${pgconfig_path}, pg_version: ${pg_version}
 
 sslutils.incompatible.pg64.error=The PostgreSQL Server Installation is not compatible with this version of the SSLUtils plugin. You must use the 64 bit plugin with a 64 bit PostgreSQL server.
 
