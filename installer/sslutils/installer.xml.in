@@ -177,9 +177,9 @@
 							exec="${pgconfig_path}" execArgs="--version"
 							workingDirectory="${installdir}${platform_path_separator}bin"
 							abortOnError="0" showMessageOnError="0">
-							<onErrorActionList>
-								<setInstallerVariable name="pg_version_str" value="PG_MAJOR_VERSION"/>
-							</onErrorActionList>
+							<ruleList>
+								<fileTest path="${pgconfig_path}" condition="exists"/>
+							</ruleList>
 						</setInstallerVariableFromScriptOutput>
 						<setInstallerVariableFromRegEx name="pg_version" text="${pg_version_str}">
 							<pattern>^PostgreSQL REGEXP_VERSION_CHECK</pattern>
@@ -188,6 +188,11 @@
 								<compareText logic="does_not_contain" text="${pg_version_str}" value=""/>
 							</ruleList>
 						</setInstallerVariableFromRegEx>
+						<setInstallerVariable name="pg_version" value="PG_MAJOR_VERSION">
+							<ruleList>
+								<fileTest path="${pgconfig_path}" condition="not_exists"/>
+							</ruleList>
+						</setInstallerVariable>
 						<throwError text="${msg(sslutils.incompatible.pg.error)}">
 							<ruleList>
 								<compareText logic="does_not_contain" text="${pg_version}" value="PG_MAJOR_VERSION"/>
@@ -431,9 +436,9 @@
 								<setInstallerVariableFromScriptOutput name="pg_version_str"
 									exec="${installdir}\bin\pg_config.exe" execArgs="--version"
 									workingDirectory="${installdir}\bin">
-									<onErrorActionList>
-										<setInstallerVariable name="pg_version_str" value="PG_MAJOR_VERSION"/>
-									</onErrorActionList>
+									<ruleList>
+										<fileTest path="${installdir}\bin\pg_config.exe" condition="exists"/>
+									</ruleList>
 								</setInstallerVariableFromScriptOutput>
 								<setInstallerVariableFromRegEx name="pg_version" text="${pg_version_str}">
 									<pattern>^PostgreSQL REGEXP_VERSION_CHECK</pattern>
@@ -442,6 +447,11 @@
 										<compareText logic="does_not_equal" text="${pg_version_str}" value=""/>
 									</ruleList>
 								</setInstallerVariableFromRegEx>
+								<setInstallerVariable name="pg_version" value="PG_MAJOR_VERSION">
+									<ruleList>
+										<fileTest path="${pgconfig_path}" condition="not_exists"/>
+									</ruleList>
+								</setInstallerVariable>
 								<throwError text="${msg(sslutils.incompatible.pg.error)}">
 									<ruleList>
 										<compareText logic="does_not_contain" text="${pg_version}" value="PG_MAJOR_VERSION"/>
