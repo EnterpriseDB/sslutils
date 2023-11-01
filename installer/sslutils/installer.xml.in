@@ -1,449 +1,508 @@
-<?xml version="1.0" encoding="UTF-8"?>
 <project>
-   <!-- Package details -->
-   <shortName>INSTALLER_SHORTNAME</shortName>
-   <fullName>INSTALL_PREFIXSSLUtils</fullName>
-   <version>PVT_SSLUTILS_VERSION-PVT_SSLUTILS_BUILDNUM</version>
-   <!-- These options are used on Windows -->
-   <startMenuGroupName />
-   <!-- Product Specific Options -->
-   <productDisplayName>SSLUtils ${productVersion} - PG_TYPE_LONG PG_MAJOR_VERSION</productDisplayName>
-   <productComments>${product_fullname} ${productVersion} for PG_TYPE_LONG PG_MAJOR_VERSION</productComments>
-   <productUrlHelpLink>http://www.enterprisedb.com</productUrlHelpLink>
-   <productUrlInfoAbout>http://www.enterprisedb.com</productUrlInfoAbout>
-   <!-- The options are used for RPM registration -->
-   <description>An extension for generating the SSL certificate files on PG_TYPE_LONG PG_MAJOR_VERSION used by the Postgres Enterprise Manager Server and Agents for communication</description>
-   <summary>${msg(install.summary)}</summary>
-   <vendor>EnterpriseDB</vendor>
-   <release>1</release>
-   <!-- Installer Size -->
-   <width>550</width>
-   <height>400</height>
-   <!-- Misc package options -->
-   <installerFilename>INSTALLER_NAME-PVT_SSLUTILS_VERSION-PVT_SSLUTILS_BUILDNUM-${platform_name}.${platform_exec_suffix}</installerFilename>
-   <enableRollback>0</enableRollback>
-   <requireInstallationByRootUser>1</requireInstallationByRootUser>
-   <saveRelativePaths>1</saveRelativePaths>
-   <outputDirectory>../output</outputDirectory>
-   <uninstallerDirectory>${installdir}</uninstallerDirectory>
-   <uninstallerName>uninstall-${product_shortname}</uninstallerName>
-   <unattendedModeUI>minimal</unattendedModeUI>
-   <compressionAlgorithm>lzma</compressionAlgorithm>
-   <installationLogFile>${system_temp_directory}/install-${product_shortname}-PG_TYPE.log</installationLogFile>
-   <uninstallationLogFile>${system_temp_directory}/uninstall-${product_shortname}-PG_TYPE.log</uninstallationLogFile>
-   <allowWindowResize>1</allowWindowResize>
-   <windowsSoftwareRegistryPrefix>${project.vendor}\sslutils-PG_TYPE_PG_MAJOR_VERSION</windowsSoftwareRegistryPrefix>
-   <replaceLockedFilesOnReboot>1</replaceLockedFilesOnReboot>
-   <wrapLicenseFileText>1</wrapLicenseFileText>
-   <licenseFile encoding="utf-8">LICENSE_FILE</licenseFile>
-   <!-- set if it is a native windows 64 bit-->
-   <windows64bitMode>@@WIN64MODE@@</windows64bitMode>
-   <!-- Images -->
-   <disableSplashScreen>1</disableSplashScreen>
-   <leftImage>EDB_INSTALLER_SIDE_IMAGE</leftImage>
-   <!-- i18n files for the UI -->
-   <allowedLanguages>en</allowedLanguages>
-   <customLanguageFileList>
-      <language>
-         <code>en</code>
-         <encoding>iso8859-1</encoding>
-         <file>i18n/en.lng</file>
-      </language>
-   </customLanguageFileList>
-   <!-- Prebuild Actons-->
-   <preBuildActionList>
-      <setInstallerVariable name="project.installerFilename" value="INSTALLER_NAME-PVT_SSLUTILS_VERSION-PVT_SSLUTILS_BUILDNUM-${platform_name}-x64.${platform_exec_suffix}">
-         <ruleList>
-            <isTrue value="${project.windows64bitMode}" />
-         </ruleList>
-      </setInstallerVariable>
-      <setInstallerVariable name="originalplatform" value="${platform_name}" />
-      <setInstallerVariable name="platform_shared_object_suffix" value="dll" />
-   </preBuildActionList>
-   <preShowHelpActionList>
-      <!-- Set the default installation directory -->
-      <setInstallerVariable name="default_installdir" persist="1" value="${platform_install_prefix}\PG_TYPE_LONG\PG_MAJOR_VERSION" />
-   </preShowHelpActionList>
-   <!-- Initialisation actions -->
-   <initializationActionList>
-      <setInstallerVariable name="productVersion" persist="1" value="PVT_SSLUTILS_VERSION" />
-      <setInstallerVariable name="installdir" persist="0" value="" />
-      <!-- Set the sslutils version(if exists) -->
-      <setInstallerVariable name="sslutilsVersion" value="" persist="0" />
-      <!-- WIN: Set the pghome default value -->
-      <setInstallerVariable name="default_installdir" persist="1" value="${platform_install_prefix}\SERVER_INSTALL_DIR" />
-   </initializationActionList>
-   <!-- Preinstallation actions -->
-   <preInstallationActionList>
-      <actionGroup>
-         <actionList>
-            <setInstallerVariable name="windowsSoftwareRegistryPrefix" value="${vendor}\${fullName}" persist="1" />
-            <!-- WIN: Get the branding & Check Previous Installation of sslutils -->
-            <registryGet key="HKEY_LOCAL_MACHINE\SOFTWARE\${project.windowsSoftwareRegistryPrefix}" name="Version" variable="sslutilsVersion" />
-            <!-- WIN: Set Installation Directory in case of re-install/upgrade -->
-            <registryGet key="HKEY_LOCAL_MACHINE\SOFTWARE\${project.windowsSoftwareRegistryPrefix}" name="Location" variable="installdir">
-               <ruleList>
-                  <compareText logic="does_not_equal" text="${sslutilsVersion}" value="" />
-               </ruleList>
-            </registryGet>
-            <!-- Get the installation directory from previous pg installation -->
-            <!--    Postgres Installation would have set these values -->
-            <!-- For PG, it's 'postgresql-PG_MAJOR_VERSION' -->
-            <!-- For EPAS, it's 'pgplusas-EDB_MAJOR_VERSION' -->
-            <registryGet key="HKEY_LOCAL_MACHINE\SOFTWARE\PostgreSQL\Installations\PG_REGISTRY_SUFFIX" name="Base Directory" variable="pginstalldir" />
-            <!-- Set the default value of installdir as found in registry if it is found there -->
-            <setInstallerVariable name="default_installdir" value="${pginstalldir}">
-               <ruleList>
-                  <compareText logic="does_not_equal" text="${pginstalldir}" value="" />
-               </ruleList>
-            </setInstallerVariable>
-            <!-- Set the default value of installdir if it is not found in registry -->
-            <actionGroup>
-               <actionList>
-                  <!-- Set the default installation directory -->
-                  <setInstallerVariable name="default_installdir" persist="1" value="${platform_install_prefix}\PG_TYPE_LONG\PG_MAJOR_VERSION">
-                     <ruleList>
-                        <compareText logic="equals" text="${platform_name}" value="windows" />
-                     </ruleList>
-                  </setInstallerVariable>
-               </actionList>
-               <ruleList>
-                  <compareText logic="equals" text="${pginstalldir}" value="" />
-               </ruleList>
-            </actionGroup>
-            <setInstallerVariable name="installdir" value="${default_installdir}">
-               <ruleList>
-                  <stringTest text="${installdir}" type="empty" />
-               </ruleList>
-            </setInstallerVariable>
-            <!-- In case of unattended mode raise error if installdir is not valid -->
-            <actionGroup>
-               <actionList>
-                  <!-- WIN: show error if the installdir is not valid -->
-                  <throwError text="${msg(sslutils.installdir.pgerror)}">
-                     <ruleList>
-                        <ruleGroup>
-                           <ruleEvaluationLogic>or</ruleEvaluationLogic>
-                           <ruleList>
-                              <fileTest path="${installdir}\bin\psql.exe" condition="not_exists" />
-                              <fileTest path="${installdir}\bin\createdb.exe" condition="not_exists" />
-                              <fileTest path="${installdir}\bin\pg_config.exe" condition="not_exists" />
-                           </ruleList>
-                        </ruleGroup>
-                        <ruleGroup>
-                           <ruleList>
-                              <compareText text="${platform_name}" logic="equals" value="windows" />
-                           </ruleList>
-                        </ruleGroup>
-                     </ruleList>
-                  </throwError>
-                  <actionGroup>
-                     <actionList>
-                        <setInstallerVariable name="pgconfig_path" value="${installdir}\bin\pg_config.exe" />
-                        <setInstallerVariable name="default_libdir" value="${installdir}\lib" />
-                        <setInstallerVariable name="default_sharedir" value="${installdir}\share" />
-                        <setInstallerVariable name="default_docdir" value="${installdir}\share\doc" />
-                     </actionList>
-                     <ruleList>
-                        <compareText logic="equals" text="${platform_name}" value="windows" />
-                     </ruleList>
-                  </actionGroup>
-                  <setInstallerVariableFromScriptOutput name="pg_version_str" exec="${pgconfig_path}" execArgs="--version" workingDirectory="${installdir}${platform_path_separator}bin" abortOnError="0" showMessageOnError="0" />
-                  <setInstallerVariableFromRegEx name="pg_version" text="${pg_version_str}">
-                     <pattern>^PostgreSQL REGEXP_VERSION_CHECK</pattern>
-                     <substitution>\1</substitution>
-                     <ruleList>
-                        <compareText logic="does_not_contain" text="${pg_version_str}" value="" />
-                     </ruleList>
-                  </setInstallerVariableFromRegEx>
-                  <throwError text="${msg(sslutils.incompatible.pg.error)}">
-                     <ruleList>
-                        <compareText logic="does_not_contain" text="${pg_version}" value="PG_MAJOR_VERSION" />
-                     </ruleList>
-                  </throwError>
-                  <setInstallerVariableFromScriptOutput name="libdir" abortOnError="0" showMessageOnError="0" exec="${pgconfig_path}" execArgs="--pkglibdir">
-                     <onErrorActionList>
-                        <setInstallerVariable name="libdir" value="${default_libdir}" />
-                     </onErrorActionList>
-                  </setInstallerVariableFromScriptOutput>
-                  <setInstallerVariableFromScriptOutput name="sharedir" abortOnError="0" showMessageOnError="0" exec="${pgconfig_path}" execArgs="--sharedir">
-                     <onErrorActionList>
-                        <setInstallerVariable name="sharedir" value="${default_sharedir}" />
-                     </onErrorActionList>
-                  </setInstallerVariableFromScriptOutput>
-                  <setInstallerVariable name="extensiondir" value="${sharedir}${platform_path_separator}extension" />
-                  <setInstallerVariableFromScriptOutput name="docdir" abortOnError="0" showMessageOnError="0" exec="${pgconfig_path}" execArgs="--docdir">
-                     <onErrorActionList>
-                        <setInstallerVariable name="docdir" value="${default_docdir}" />
-                     </onErrorActionList>
-                  </setInstallerVariableFromScriptOutput>
-                  <setInstallerVariable name="docdir" value="${docdir}${platform_path_separator}contrib" />
-               </actionList>
-               <ruleList>
-                  <compareText text="${installer_ui}" logic="equals" value="unattended" />
-                  <compareText logic="equals" text="${sslutilsVersion}" value="" />
-               </ruleList>
-            </actionGroup>
-            <actionGroup>
-               <actionList>
-                  <logMessage text="Check if 32 bit SSLUtils installer is being tried out aginst PG x64 bit. This condition will be hit in case of unattended mode and prefix specified" />
-                  <registryGet wowMode="64" name="Base Directory" variable="pginstalldir" key="HKEY_LOCAL_MACHINE\SOFTWARE\PostgreSQL\Installations\postgresql-x64-PG_MAJOR_VERSION" />
-                  <throwError text="${msg(sslutils.incompatible.pg64.error)}">
-                     <ruleList>
-                        <compareText nocase="1" logic="equals" text="${installdir}" value="${pginstalldir}" />
-                        <compareText text="${platform_name}" logic="equals" value="windows" />
-                     </ruleList>
-                  </throwError>
-               </actionList>
-               <ruleList>
-                  <isFalse value="${project.windows64bitMode}" />
-                  <platformTest type="windows-x64" />
-                  <compareText text="${platform_name}" logic="equals" value="windows" />
-               </ruleList>
-            </actionGroup>
-            <setInstallerVariable name="installationType" value="upgrade">
-               <ruleList>
-                  <compareText logic="does_not_equal" text="${sslutilsVersion}" value="" />
-               </ruleList>
-            </setInstallerVariable>
-         </actionList>
-      </actionGroup>
-   </preInstallationActionList>
-   <!-- Ready to install actions -->
-   <readyToInstallActionList>
-      <actionGroup>
-         <actionList>
-            <actionGroup>
-               <actionList>
-                  <setInstallerVariable name="pgconfig_path" value="${installdir}\bin\pg_config.exe" />
-                  <setInstallerVariable name="default_libdir" value="${installdir}\lib" />
-                  <setInstallerVariable name="default_sharedir" value="${installdir}\share" />
-                  <setInstallerVariable name="default_docdir" value="${installdir}\share\doc" />
-               </actionList>
-               <ruleList>
-                  <compareText logic="equals" text="${platform_name}" value="windows" />
-               </ruleList>
-            </actionGroup>
-            <setInstallerVariableFromScriptOutput name="libdir" abortOnError="0" showMessageOnError="0" exec="${pgconfig_path}" execArgs="--pkglibdir">
-               <onErrorActionList>
-                  <setInstallerVariable name="libdir" value="${default_libdir}" />
-               </onErrorActionList>
-            </setInstallerVariableFromScriptOutput>
-            <setInstallerVariableFromScriptOutput name="sharedir" abortOnError="0" showMessageOnError="0" exec="${pgconfig_path}" execArgs="--sharedir">
-               <onErrorActionList>
-                  <setInstallerVariable name="sharedir" value="${default_sharedir}" />
-               </onErrorActionList>
-            </setInstallerVariableFromScriptOutput>
-            <setInstallerVariable name="extensiondir" value="${sharedir}${platform_path_separator}extension" />
-            <setInstallerVariableFromScriptOutput name="docdir" abortOnError="0" showMessageOnError="0" exec="${pgconfig_path}" execArgs="--docdir">
-               <onErrorActionList>
-                  <setInstallerVariable name="docdir" value="${default_docdir}" />
-               </onErrorActionList>
-            </setInstallerVariableFromScriptOutput>
-            <setInstallerVariable name="docdir" value="${docdir}${platform_path_separator}contrib" />
-         </actionList>
-      </actionGroup>
-   </readyToInstallActionList>
-   <!-- Post installation actions -->
-   <postInstallationActionList>
-      <actionGroup>
-         <actionList>
-            <registrySet name="Description" value="${msg(install.summary)}" key="HKEY_LOCAL_MACHINE\SOFTWARE\${project.windowsSoftwareRegistryPrefix}" />
-            <registrySet name="Version" value="${product_version}" key="HKEY_LOCAL_MACHINE\SOFTWARE\${project.windowsSoftwareRegistryPrefix}" />
-            <registrySet name="Location" value="${installdir}" key="HKEY_LOCAL_MACHINE\SOFTWARE\${project.windowsSoftwareRegistryPrefix}" />
-         </actionList>
-      </actionGroup>
-   </postInstallationActionList>
-   <!-- preUninstallation actions -->
-   <preUninstallationActionList>
-      <registryDelete key="HKEY_LOCAL_MACHINE\SOFTWARE\${project.windowsSoftwareRegistryPrefix}" />
-   </preUninstallationActionList>
-   <!-- Components -->
-   <componentList>
-      <component>
-         <name>sslutils</name>
-         <description>SSLUtils</description>
-         <canBeEdited>0</canBeEdited>
-         <selected>1</selected>
-         <show>0</show>
-         <folderList>
-            <!-- WIN : Program files -->
-            <folder>
-               <description>Program Files</description>
-               <destination>${libdir}</destination>
-               <name>programfileslibwindows</name>
-               <platforms>windows</platforms>
-               <distributionFileList>
-                  <distributionFile origin="STAGING/lib/sslutils.${platform_shared_object_suffix}" />
-               </distributionFileList>
-            </folder>
-            <!-- WIN : Extension Files -->
-            <folder>
-               <description>Extension Files</description>
-               <destination>${extensiondir}</destination>
-               <name>programfilesextensionwindows</name>
-               <platforms>windows</platforms>
-               <distributionFileList>
-                  <distributionFile origin="STAGING/share/extension/sslutils--1.3.sql" />
-                  <distributionFile origin="STAGING/share/extension/sslutils--1.2.sql" />
-                  <distributionFile origin="STAGING/share/extension/sslutils--1.1.sql" />
-                  <distributionFile origin="STAGING/share/extension/sslutils--unpackaged--1.0.sql" />
-                  <distributionFile origin="STAGING/share/extension/sslutils--1.0--1.1.sql" />
-                  <distributionFile origin="STAGING/share/extension/sslutils--1.1--1.2.sql" />
-                  <distributionFile origin="STAGING/share/extension/sslutils--1.2--1.3.sql" />
-                  <distributionFile origin="STAGING/share/extension/sslutils--1.0--1.3.sql" />
-                  <distributionFile origin="STAGING/share/extension/sslutils--1.1--1.3.sql" />
-                  <distributionFile origin="STAGING/share/extension/sslutils--unpackaged--1.3.sql" />
-                  <distributionFile origin="STAGING/share/extension/sslutils.control" />
-               </distributionFileList>
-            </folder>
-            <!-- WIN : Share Files -->
-            <folder>
-               <description>Share Script File</description>
-               <destination>${sharedir}</destination>
-               <name>programfilessharewindows</name>
-               <platforms>windows</platforms>
-               <distributionFileList>
-                  <distributionFile origin="STAGING/share/sslutils.sql" />
-                  <distributionFile origin="STAGING/share/uninstall_sslutils.sql" />
-               </distributionFileList>
-            </folder>
-            <!-- WIN : README.sslutils -->
-            <folder>
-               <description>README file</description>
-               <destination>${docdir}</destination>
-               <name>programfilesdocwindows</name>
-               <platforms>windows</platforms>
-               <distributionFileList>
-                  <distributionFile origin="STAGING/doc/README.sslutils" />
-               </distributionFileList>
-            </folder>
-         </folderList>
-      </component>
-   </componentList>
-   <parameterList>
-      <!-- Install Directory -->
-      <parameterGroup name="PostgresInstallationDetails" title="${msg(pg.server.title)}" description="Installer.Parameter.pg.installdir" explanation="Installer.Parameter.installdir.pg.explanation">
-         <parameterList>
-            <directoryParameter>
-               <name>installdir</name>
-               <value>${default_installdir}</value>
-               <default />
-               <allowEmptyValue>1</allowEmptyValue>
-               <ask>yes</ask>
-               <cliOptionName>prefix</cliOptionName>
-               <mustBeWritable>yes</mustBeWritable>
-               <mustExist>0</mustExist>
-               <width>40</width>
-               <validationActionList>
-                  <actionGroup>
-                     <actionList>
-                        <!-- Validating whether installdir is empty -->
-                        <actionGroup>
-                           <actionList>
-                              <setInstallerVariable name="installdir" value="${default_installdir}" />
-                              <throwError text="${msg(sslutils.installdir.empty)}" />
-                           </actionList>
-                           <ruleList>
-                              <compareText text="${installdir}" logic="equals" value="" />
-                           </ruleList>
-                        </actionGroup>
-                        <!-- WIN: show error if the installdir is not valid -->
-                        <actionGroup>
-                           <actionList>
-                              <throwError text="${msg(sslutils.installdir.pgerror)}" />
-                           </actionList>
-                           <ruleList>
-                              <ruleGroup>
-                                 <ruleEvaluationLogic>or</ruleEvaluationLogic>
-                                 <ruleList>
-                                    <fileTest path="${installdir}\bin\psql.exe" condition="not_exists" />
-                                    <fileTest path="${installdir}\bin\createdb.exe" condition="not_exists" />
-                                    <fileTest path="${installdir}\bin\pg_config.exe" condition="not_exists" />
-                                 </ruleList>
-                              </ruleGroup>
-                              <ruleGroup>
-                                 <ruleList>
-                                    <compareText text="${platform_name}" logic="equals" value="windows" />
-                                 </ruleList>
-                              </ruleGroup>
-                           </ruleList>
-                        </actionGroup>
-                        <setInstallerVariableFromScriptOutput name="pg_version_str" exec="${installdir}\bin\pg_config.exe" execArgs="--version" workingDirectory="${installdir}\bin" />
-                        <setInstallerVariableFromRegEx name="pg_version" text="${pg_version_str}">
-                           <pattern>^PostgreSQL REGEXP_VERSION_CHECK</pattern>
-                           <substitution>\1</substitution>
-                           <ruleList>
-                              <compareText logic="does_not_equal" text="${pg_version_str}" value="" />
-                           </ruleList>
-                        </setInstallerVariableFromRegEx>
-                        <throwError text="${msg(sslutils.incompatible.pg.error)}">
-                           <ruleList>
-                              <compareText logic="does_not_contain" text="${pg_version}" value="PG_MAJOR_VERSION" />
-                           </ruleList>
-                        </throwError>
-                        <!-- Check if 32 bit SSLUtils installer is being tried out aginst PG x64 bit -->
-                        <registryGet name="Base Directory" wowMode="64" variable="pginstalldir" key="HKEY_LOCAL_MACHINE\SOFTWARE\PostgreSQL\Installations\postgresql-x64-PG_MAJOR_VERSION" />
-                        <actionGroup>
-                           <actionList>
-                              <setInstallerVariable name="installdir" value="${defaultpghome}" />
-                              <showWarning text="${msg(sslutils.incompatible.pg64.error)}" />
-                           </actionList>
-                           <ruleList>
-                              <compareText text="${platform_name}" logic="equals" value="windows" />
-                              <compareText nocase="1" logic="equals" text="${installdir}" value="${pginstalldir}" />
-                              <isFalse value="${project.windows64bitMode}" />
-                              <platformTest type="windows-x64" />
-                           </ruleList>
-                        </actionGroup>
-                     </actionList>
-                  </actionGroup>
-               </validationActionList>
-               <!-- Validating whether installdir contains whitespaces (Linux) -->
-               <postShowPageActionList>
-                  <actionGroup>
-                     <actionList>
-                        <showWarning text="${msg(sslutils.installdir.error)}">
-                           <ruleList>
-                              <regExMatch text="${installdir}" logic="does_not_match">
-                                 <pattern>^/([0-9a-zA-Z_/\.\-]*)$</pattern>
-                              </regExMatch>
-                              <compareText logic="does_not_equal" text="${platform_name}" value="windows" />
-                           </ruleList>
-                        </showWarning>
-                        <!-- Validating whether installdir is valid (Windows) -->
-                        <actionGroup>
-                           <actionList>
-                              <setInstallerVariable name="installdir" value="${default_installdir}" />
-                              <showWarning text="${msg(sslutils.installdir.error)}" />
-                           </actionList>
-                           <ruleList>
-                              <regExMatch text="${installdir}" logic="does_not_match">
-                                 <pattern>^([a-zA-Z]:)\\([0-9a-zA-Z_\\\s\.\-\(\)]*)$</pattern>
-                              </regExMatch>
-                              <compareText text="${platform_name}" logic="equals" value="windows" />
-                           </ruleList>
-                        </actionGroup>
-                     </actionList>
-                  </actionGroup>
-               </postShowPageActionList>
-            </directoryParameter>
-         </parameterList>
-         <ruleList>
-            <compareText text="${sslutilsVersion}" logic="equals" value="" />
-         </ruleList>
-      </parameterGroup>
-      <stringParameter name="originalplatform" ask="0" cliOptionShow="0" />
-      <stringParameter name="platform_shared_object_suffix" ask="0" cliOptionShow="0" />
-      <stringParameter name="branding" cliOptionName="branding" ask="0" cliOptionShow="0" />
-      <!-- Explain that we're using an existing installation directory -->
-      <labelParameter>
-         <name>upgrade</name>
-         <title>${msg(upgrade.existing.installation.title)}</title>
-         <description>${msg(upgrade.existing.installation.description)}</description>
-         <ruleList>
-            <compareText logic="does_not_equal" text="${sslutilsVersion}" value="" />
-         </ruleList>
-      </labelParameter>
-   </parameterList>
+	<!-- Package details -->
+	<shortName>INSTALLER_SHORTNAME</shortName>
+	<fullName>INSTALL_PREFIXSSLUtils</fullName>
+	<version>PVT_SSLUTILS_VERSION-PVT_SSLUTILS_BUILDNUM</version>
+
+	<!-- These options are used on Windows -->
+	<startMenuGroupName/>
+
+	<!-- Product Specific Options -->
+	<productDisplayName>SSLUtils ${productVersion} - PG_TYPE_LONG PG_MAJOR_VERSION</productDisplayName>
+	<productComments>${product_fullname} ${productVersion} for PG_TYPE_LONG PG_MAJOR_VERSION</productComments>
+	<productUrlHelpLink>http://www.enterprisedb.com</productUrlHelpLink>
+	<productUrlInfoAbout>http://www.enterprisedb.com</productUrlInfoAbout>
+
+	<!-- The options are used for RPM registration -->
+	<description>An extension for generating the SSL certificate files on PG_TYPE_LONG PG_MAJOR_VERSION used by the Postgres Enterprise Manager Server and Agents for communication</description>
+	<summary>${msg(install.summary)}</summary>
+	<vendor>EnterpriseDB</vendor>
+	<release>1</release>
+
+	<!-- Installer Size -->
+	<width>550</width>
+	<height>400</height>
+
+	<!-- Misc package options -->
+	<installerFilename>INSTALLER_NAME-PVT_SSLUTILS_VERSION-PVT_SSLUTILS_BUILDNUM-${platform_name}.${platform_exec_suffix}</installerFilename>
+	<enableRollback>0</enableRollback>
+	<requireInstallationByRootUser>1</requireInstallationByRootUser>
+	<saveRelativePaths>1</saveRelativePaths>
+	<outputDirectory>../output</outputDirectory>
+	<uninstallerDirectory>${installdir}</uninstallerDirectory>
+	<uninstallerName>uninstall-${product_shortname}</uninstallerName>
+	<unattendedModeUI>minimal</unattendedModeUI>
+	<compressionAlgorithm>lzma</compressionAlgorithm>
+	<installationLogFile>${system_temp_directory}/install-${product_shortname}-PG_TYPE.log</installationLogFile>
+	<uninstallationLogFile>${system_temp_directory}/uninstall-${product_shortname}-PG_TYPE.log</uninstallationLogFile>
+	<allowWindowResize>1</allowWindowResize>
+	<windowsSoftwareRegistryPrefix>${project.vendor}\sslutils-PG_TYPE_PG_MAJOR_VERSION</windowsSoftwareRegistryPrefix>
+	<replaceLockedFilesOnReboot>1</replaceLockedFilesOnReboot>
+	<wrapLicenseFileText>1</wrapLicenseFileText>
+	<licenseFile encoding="utf-8">LICENSE_FILE</licenseFile>
+	<!-- set if it is a native windows 64 bit-->
+	<windows64bitMode>@@WIN64MODE@@</windows64bitMode>
+
+	<!-- Images -->
+	<disableSplashScreen>1</disableSplashScreen>
+	<leftImage>EDB_INSTALLER_SIDE_IMAGE</leftImage>
+
+	<!-- i18n files for the UI -->
+	<allowedLanguages>en</allowedLanguages>
+	<customLanguageFileList>
+		<language>
+			<code>en</code>
+			<encoding>iso8859-1</encoding>
+			<file>i18n/en.lng</file>
+		</language>
+	</customLanguageFileList>
+
+	<!-- Prebuild Actons-->
+	<preBuildActionList>
+		<setInstallerVariable name="project.installerFilename" value="INSTALLER_NAME-PVT_SSLUTILS_VERSION-PVT_SSLUTILS_BUILDNUM-${platform_name}-x64.${platform_exec_suffix}">
+			<ruleList>
+				<isTrue value="${project.windows64bitMode}"/>
+			</ruleList>
+		</setInstallerVariable>
+		<setInstallerVariable name="originalplatform" value="${platform_name}"/>
+		<setInstallerVariable name="platform_shared_object_suffix" value="dll"/>
+	</preBuildActionList>
+
+	<preShowHelpActionList>
+		<!-- Set the default installation directory -->
+		<setInstallerVariable name="default_installdir" persist="1" value="${platform_install_prefix}\PG_TYPE_LONG\PG_MAJOR_VERSION"/>
+	</preShowHelpActionList>
+
+	<!-- Initialisation actions -->
+	<initializationActionList>
+		<setInstallerVariable name="productVersion" persist="1" value="PVT_SSLUTILS_VERSION"/>
+		<setInstallerVariable name="installdir" persist="0" value=""/>
+		<!-- Set the sslutils version(if exists) -->
+		<setInstallerVariable name="sslutilsVersion" value="" persist="0"/>
+
+		<!-- WIN: Set the pghome default value -->
+		<setInstallerVariable name="default_installdir" persist="1" value="${platform_install_prefix}\SERVER_INSTALL_DIR"/>
+	</initializationActionList>
+
+	<!-- Preinstallation actions -->
+	<preInstallationActionList>
+
+		<actionGroup>
+			<actionList>
+				<setInstallerVariable name="windowsSoftwareRegistryPrefix" value="${vendor}\${fullName}"
+					persist="1"/>
+
+				<!-- WIN: Get the branding & Check Previous Installation of sslutils -->
+				<registryGet key="HKEY_LOCAL_MACHINE\SOFTWARE\${project.windowsSoftwareRegistryPrefix}"
+					name="Version" variable="sslutilsVersion"/>
+
+				<!-- WIN: Set Installation Directory in case of re-install/upgrade -->
+				<registryGet key="HKEY_LOCAL_MACHINE\SOFTWARE\${project.windowsSoftwareRegistryPrefix}"
+					name="Location" variable="installdir">
+					<ruleList>
+						<compareText logic="does_not_equal" text="${sslutilsVersion}" value=""/>
+					</ruleList>
+				</registryGet>
+
+				<!-- Get the installation directory from previous pg installation -->
+				<!--    Postgres Installation would have set these values -->
+				<!-- For PG, it's 'postgresql-PG_MAJOR_VERSION' -->
+				<!-- For EPAS, it's 'pgplusas-EDB_MAJOR_VERSION' -->
+				<registryGet key="HKEY_LOCAL_MACHINE\SOFTWARE\PostgreSQL\Installations\PG_REGISTRY_SUFFIX"
+					name="Base Directory" variable="pginstalldir"/>
+
+				<!-- Set the default value of installdir as found in registry if it is found there -->
+				<setInstallerVariable name="default_installdir" value="${pginstalldir}">
+					<ruleList>
+						<compareText logic="does_not_equal" text="${pginstalldir}" value=""/>
+					</ruleList>
+				</setInstallerVariable>
+
+				<!-- Set the default value of installdir if it is not found in registry -->
+				<actionGroup>
+					<actionList>
+						<!-- Set the default installation directory -->
+						<setInstallerVariable name="default_installdir" persist="1" value="${platform_install_prefix}\PG_TYPE_LONG\PG_MAJOR_VERSION">
+							<ruleList>
+								<compareText logic="equals" text="${platform_name}" value="windows"/>
+							</ruleList>
+						</setInstallerVariable>
+					</actionList>
+					<ruleList>
+						<compareText logic="equals" text="${pginstalldir}" value=""/>
+					</ruleList>
+				</actionGroup>
+
+				<setInstallerVariable name="installdir" value="${default_installdir}">
+					<ruleList>
+						<stringTest text="${installdir}" type="empty"/>
+					</ruleList>
+				</setInstallerVariable>
+
+				<!-- In case of unattended mode raise error if installdir is not valid -->
+				<actionGroup>
+					<actionList>
+						<!-- WIN: show error if the installdir is not valid -->
+						<throwError text="${msg(sslutils.installdir.pgerror)}">
+							<ruleList>
+								<ruleGroup>
+									<ruleEvaluationLogic>or</ruleEvaluationLogic>
+									<ruleList>
+										<fileTest path="${installdir}\bin\psql.exe" condition="not_exists"/>
+										<fileTest path="${installdir}\bin\createdb.exe" condition="not_exists"/>
+										<fileTest path="${installdir}\bin\pg_config.exe" condition="not_exists"/>
+									</ruleList>
+								</ruleGroup>
+								<ruleGroup>
+									<ruleList>
+										<compareText text="${platform_name}" logic="equals" value="windows"/>
+									</ruleList>
+								</ruleGroup>
+							</ruleList>
+						</throwError>
+
+						<actionGroup>
+							<actionList>
+								<setInstallerVariable name="pgconfig_path" value="${installdir}\bin\pg_config.exe"/>
+								<setInstallerVariable name="default_libdir" value="${installdir}\lib"/>
+								<setInstallerVariable name="default_sharedir" value="${installdir}\share"/>
+								<setInstallerVariable name="default_docdir" value="${installdir}\share\doc"/>
+							</actionList>
+							<ruleList>
+								<compareText logic="equals" text="${platform_name}" value="windows"/>
+							</ruleList>
+						</actionGroup>
+						<setInstallerVariableFromScriptOutput name="pg_version_str"
+							exec="${pgconfig_path}" execArgs="--version"
+							workingDirectory="${installdir}${platform_path_separator}bin"
+							abortOnError="0" showMessageOnError="0"/>
+						<setInstallerVariableFromRegEx name="pg_version" text="${pg_version_str}">
+							<pattern>^PostgreSQL REGEXP_VERSION_CHECK</pattern>
+							<substitution>\1</substitution>
+							<ruleList>
+								<compareText logic="does_not_contain" text="${pg_version_str}" value=""/>
+							</ruleList>
+						</setInstallerVariableFromRegEx>
+						<throwError text="${msg(sslutils.incompatible.pg.error)}">
+							<ruleList>
+								<compareText logic="does_not_contain" text="${pg_version}" value="PG_MAJOR_VERSION"/>
+							</ruleList>
+						</throwError>
+						<setInstallerVariableFromScriptOutput
+							name="libdir" abortOnError="0" showMessageOnError="0"
+							exec="${pgconfig_path}" execArgs="--pkglibdir">
+							<onErrorActionList>
+								<setInstallerVariable name="libdir" value="${default_libdir}"/>
+							</onErrorActionList>
+						</setInstallerVariableFromScriptOutput>
+						<setInstallerVariableFromScriptOutput
+							name="sharedir" abortOnError="0" showMessageOnError="0"
+							exec="${pgconfig_path}" execArgs="--sharedir">
+							<onErrorActionList>
+								<setInstallerVariable name="sharedir" value="${default_sharedir}"/>
+							</onErrorActionList>
+						</setInstallerVariableFromScriptOutput>
+						<setInstallerVariable name="extensiondir" value="${sharedir}${platform_path_separator}extension"/>
+						<setInstallerVariableFromScriptOutput
+							name="docdir" abortOnError="0" showMessageOnError="0"
+							exec="${pgconfig_path}" execArgs="--docdir">
+							<onErrorActionList>
+								<setInstallerVariable name="docdir" value="${default_docdir}"/>
+							</onErrorActionList>
+						</setInstallerVariableFromScriptOutput>
+						<setInstallerVariable name="docdir" value="${docdir}${platform_path_separator}contrib"/>
+					</actionList>
+					<ruleList>
+						<compareText text="${installer_ui}" logic="equals" value="unattended"/>
+						<compareText logic="equals" text="${sslutilsVersion}" value=""/>
+					</ruleList>
+				</actionGroup>
+
+				<actionGroup>
+					<actionList>
+						<logMessage text="Check if 32 bit SSLUtils installer is being tried out aginst PG x64 bit. This condition will be hit in case of unattended mode and prefix specified"/>
+						<registryGet wowMode="64" name="Base Directory" variable="pginstalldir"
+							key="HKEY_LOCAL_MACHINE\SOFTWARE\PostgreSQL\Installations\postgresql-x64-PG_MAJOR_VERSION"/>
+						<throwError text="${msg(sslutils.incompatible.pg64.error)}">
+							<ruleList>
+								<compareText nocase="1" logic="equals" text="${installdir}" value="${pginstalldir}"/>
+								<compareText text="${platform_name}" logic="equals" value="windows"/>
+							</ruleList>
+						</throwError>
+					</actionList>
+					<ruleList>
+						<isFalse value="${project.windows64bitMode}"/>
+						<platformTest type="windows-x64"/>
+						<compareText text="${platform_name}" logic="equals" value="windows"/>
+					</ruleList>
+				</actionGroup>
+
+				<setInstallerVariable name="installationType" value="upgrade">
+					<ruleList>
+						<compareText logic="does_not_equal" text="${sslutilsVersion}" value=""/>
+					</ruleList>
+				</setInstallerVariable>
+			</actionList>
+		</actionGroup>
+
+	</preInstallationActionList>
+
+	<!-- Ready to install actions -->
+	<readyToInstallActionList>
+		<actionGroup>
+			<actionList>
+				<actionGroup>
+					<actionList>
+						<setInstallerVariable name="pgconfig_path" value="${installdir}\bin\pg_config.exe"/>
+						<setInstallerVariable name="default_libdir" value="${installdir}\lib"/>
+						<setInstallerVariable name="default_sharedir" value="${installdir}\share"/>
+						<setInstallerVariable name="default_docdir" value="${installdir}\share\doc"/>
+					</actionList>
+					<ruleList>
+						<compareText logic="equals" text="${platform_name}" value="windows"/>
+					</ruleList>
+				</actionGroup>
+				<setInstallerVariableFromScriptOutput
+					name="libdir" abortOnError="0" showMessageOnError="0"
+					exec="${pgconfig_path}" execArgs="--pkglibdir">
+					<onErrorActionList>
+						<setInstallerVariable name="libdir" value="${default_libdir}"/>
+					</onErrorActionList>
+				</setInstallerVariableFromScriptOutput>
+				<setInstallerVariableFromScriptOutput
+					name="sharedir" abortOnError="0" showMessageOnError="0"
+					exec="${pgconfig_path}" execArgs="--sharedir">
+					<onErrorActionList>
+						<setInstallerVariable name="sharedir" value="${default_sharedir}"/>
+					</onErrorActionList>
+				</setInstallerVariableFromScriptOutput>
+				<setInstallerVariable name="extensiondir" value="${sharedir}${platform_path_separator}extension"/>
+				<setInstallerVariableFromScriptOutput
+					name="docdir" abortOnError="0" showMessageOnError="0"
+					exec="${pgconfig_path}" execArgs="--docdir">
+					<onErrorActionList>
+						<setInstallerVariable name="docdir" value="${default_docdir}"/>
+					</onErrorActionList>
+				</setInstallerVariableFromScriptOutput>
+				<setInstallerVariable name="docdir" value="${docdir}${platform_path_separator}contrib"/>
+			</actionList>
+		</actionGroup>
+	</readyToInstallActionList>
+
+	<!-- Post installation actions -->
+	<postInstallationActionList>
+		<actionGroup>
+			<actionList>
+				<registrySet name="Description" value="${msg(install.summary)}"
+					key="HKEY_LOCAL_MACHINE\SOFTWARE\${project.windowsSoftwareRegistryPrefix}"/>
+				<registrySet name="Version" value="${product_version}"
+					key="HKEY_LOCAL_MACHINE\SOFTWARE\${project.windowsSoftwareRegistryPrefix}"/>
+				<registrySet name="Location" value="${installdir}"
+					key="HKEY_LOCAL_MACHINE\SOFTWARE\${project.windowsSoftwareRegistryPrefix}"/>
+			</actionList>
+		</actionGroup>
+	</postInstallationActionList>
+
+	<!-- preUninstallation actions -->
+	<preUninstallationActionList>
+		<registryDelete key="HKEY_LOCAL_MACHINE\SOFTWARE\${project.windowsSoftwareRegistryPrefix}"/>
+	</preUninstallationActionList>
+
+	<!-- Components -->
+	<componentList>
+		<component>
+			<name>sslutils</name>
+			<description>SSLUtils</description>
+			<canBeEdited>0</canBeEdited>
+			<selected>1</selected>
+			<show>0</show>
+			<folderList>
+				<!-- WIN : Program files -->
+				<folder>
+					<description>Program Files</description>
+					<destination>${libdir}</destination>
+					<name>programfileslibwindows</name>
+					<platforms>windows</platforms>
+					<distributionFileList>
+						<distributionFile origin="STAGING/lib/sslutils.${platform_shared_object_suffix}"/>
+					</distributionFileList>
+				</folder>
+				<!-- WIN : Extension Files -->
+				<folder>
+					<description>Extension Files</description>
+					<destination>${extensiondir}</destination>
+					<name>programfilesextensionwindows</name>
+					<platforms>windows</platforms>
+					<distributionFileList>
+						<distributionFile origin="STAGING/share/extension/sslutils--1.3.sql"/>
+						<distributionFile origin="STAGING/share/extension/sslutils--1.2.sql"/>
+						<distributionFile origin="STAGING/share/extension/sslutils--1.1.sql"/>
+						<distributionFile origin="STAGING/share/extension/sslutils--unpackaged--1.0.sql"/>
+						<distributionFile origin="STAGING/share/extension/sslutils--1.0--1.1.sql"/>
+						<distributionFile origin="STAGING/share/extension/sslutils--1.1--1.2.sql"/>
+						<distributionFile origin="STAGING/share/extension/sslutils--1.2--1.3.sql"/>
+						<distributionFile origin="STAGING/share/extension/sslutils--1.0--1.3.sql"/>
+						<distributionFile origin="STAGING/share/extension/sslutils--1.1--1.3.sql"/>
+						<distributionFile origin="STAGING/share/extension/sslutils--unpackaged--1.3.sql"/>
+						<distributionFile origin="STAGING/share/extension/sslutils.control"/>
+					</distributionFileList>
+				</folder>
+				<!-- WIN : Share Files -->
+				<folder>
+					<description>Share Script File</description>
+					<destination>${sharedir}</destination>
+					<name>programfilessharewindows</name>
+					<platforms>windows</platforms>
+					<distributionFileList>
+						<distributionFile origin="STAGING/share/sslutils.sql"/>
+						<distributionFile origin="STAGING/share/uninstall_sslutils.sql"/>
+					</distributionFileList>
+				</folder>
+				<!-- WIN : README.sslutils -->
+				<folder>
+					<description>README file</description>
+					<destination>${docdir}</destination>
+					<name>programfilesdocwindows</name>
+					<platforms>windows</platforms>
+					<distributionFileList>
+						<distributionFile origin="STAGING/doc/README.sslutils"/>
+					</distributionFileList>
+				</folder>
+			</folderList>
+		</component>
+	</componentList>
+	<parameterList>
+		<!-- Install Directory -->
+		<parameterGroup name="PostgresInstallationDetails" title="${msg(pg.server.title)}" description="Installer.Parameter.pg.installdir"
+			explanation="Installer.Parameter.installdir.pg.explanation">
+			<parameterList>
+				<directoryParameter>
+					<name>installdir</name>
+					<value>${default_installdir}</value>
+					<default/>
+					<allowEmptyValue>1</allowEmptyValue>
+					<ask>yes</ask>
+					<cliOptionName>prefix</cliOptionName>
+					<mustBeWritable>yes</mustBeWritable>
+					<mustExist>0</mustExist>
+					<width>40</width>
+
+					<validationActionList>
+						<actionGroup>
+							<actionList>
+								<!-- Validating whether installdir is empty -->
+								<actionGroup>
+									<actionList>
+										<setInstallerVariable name="installdir" value="${default_installdir}" />
+										<throwError text="${msg(sslutils.installdir.empty)}"/>
+									</actionList>
+									<ruleList>
+										<compareText text="${installdir}" logic="equals" value=""/>
+									</ruleList>
+								</actionGroup>
+
+								<!-- WIN: show error if the installdir is not valid -->
+								<actionGroup>
+									<actionList>
+										<throwError text="${msg(sslutils.installdir.pgerror)}"/>
+									</actionList>
+									<ruleList>
+										<ruleGroup>
+											<ruleEvaluationLogic>or</ruleEvaluationLogic>
+											<ruleList>
+												<fileTest path="${installdir}\bin\psql.exe" condition="not_exists"/>
+												<fileTest path="${installdir}\bin\createdb.exe" condition="not_exists"/>
+												<fileTest path="${installdir}\bin\pg_config.exe" condition="not_exists"/>
+											</ruleList>
+										</ruleGroup>
+										<ruleGroup>
+											<ruleList>
+												<compareText text="${platform_name}" logic="equals" value="windows"/>
+											</ruleList>
+										</ruleGroup>
+									</ruleList>
+								</actionGroup>
+								<setInstallerVariableFromScriptOutput name="pg_version_str"
+									exec="${installdir}\bin\pg_config.exe" execArgs="--version"
+									workingDirectory="${installdir}\bin"/>
+								<setInstallerVariableFromRegEx name="pg_version" text="${pg_version_str}">
+									<pattern>^PostgreSQL REGEXP_VERSION_CHECK</pattern>
+									<substitution>\1</substitution>
+									<ruleList>
+										<compareText logic="does_not_equal" text="${pg_version_str}" value=""/>
+									</ruleList>
+								</setInstallerVariableFromRegEx>
+								<throwError text="${msg(sslutils.incompatible.pg.error)}">
+									<ruleList>
+										<compareText logic="does_not_contain" text="${pg_version}" value="PG_MAJOR_VERSION"/>
+									</ruleList>
+								</throwError>
+
+								<!-- Check if 32 bit SSLUtils installer is being tried out aginst PG x64 bit -->
+								<registryGet name="Base Directory" wowMode="64" variable="pginstalldir"
+									key="HKEY_LOCAL_MACHINE\SOFTWARE\PostgreSQL\Installations\postgresql-x64-PG_MAJOR_VERSION"/>
+								<actionGroup>
+									<actionList>
+										<setInstallerVariable name="installdir" value="${defaultpghome}" />
+										<showWarning text="${msg(sslutils.incompatible.pg64.error)}"/>
+									</actionList>
+									<ruleList>
+										<compareText text="${platform_name}" logic="equals" value="windows"/>
+										<compareText nocase="1" logic="equals" text="${installdir}" value="${pginstalldir}"/>
+										<isFalse value="${project.windows64bitMode}"/>
+										<platformTest type="windows-x64"/>
+									</ruleList>
+								</actionGroup>
+							</actionList>
+						</actionGroup>
+					</validationActionList>
+
+					<!-- Validating whether installdir contains whitespaces (Linux) -->
+					<postShowPageActionList>
+						<actionGroup>
+							<actionList>
+								<showWarning text="${msg(sslutils.installdir.error)}">
+									<ruleList>
+										<regExMatch text="${installdir}" logic="does_not_match">
+											<pattern>^/([0-9a-zA-Z_/\.\-]*)$</pattern>
+										</regExMatch>
+										<compareText logic="does_not_equal" text="${platform_name}" value="windows"/>
+									</ruleList>
+								</showWarning>
+								<!-- Validating whether installdir is valid (Windows) -->
+								<actionGroup>
+									<actionList>
+										<setInstallerVariable name="installdir" value="${default_installdir}" />
+										<showWarning text="${msg(sslutils.installdir.error)}"/>
+									</actionList>
+									<ruleList>
+										<regExMatch text="${installdir}" logic="does_not_match">
+											<pattern>^([a-zA-Z]:)\\([0-9a-zA-Z_\\\s\.\-\(\)]*)$</pattern>
+										</regExMatch>
+										<compareText text="${platform_name}" logic="equals" value="windows"/>
+									</ruleList>
+								</actionGroup>
+							</actionList>
+						</actionGroup>
+					</postShowPageActionList>
+				</directoryParameter>
+			</parameterList>
+			<ruleList>
+				<compareText text="${sslutilsVersion}" logic="equals" value=""/>
+			</ruleList>
+		</parameterGroup>
+
+		<stringParameter name="originalplatform" ask="0" cliOptionShow="0"/>
+		<stringParameter name="platform_shared_object_suffix" ask="0" cliOptionShow="0"/>
+		<stringParameter name="branding" cliOptionName="branding" ask="0" cliOptionShow="0"/>
+		<!-- Explain that we're using an existing installation directory -->
+		<labelParameter>
+			<name>upgrade</name>
+			<title>${msg(upgrade.existing.installation.title)}</title>
+			<description>${msg(upgrade.existing.installation.description)}</description>
+			<ruleList>
+				<compareText logic="does_not_equal" text="${sslutilsVersion}" value=""/>
+			</ruleList>
+		</labelParameter>
+	</parameterList>
 </project>
