@@ -1400,7 +1400,7 @@ openssl_revoke_certificate(PG_FUNCTION_ARGS)
 
 		while ((token = string_sep(&p, sep)) != NULL)
 		{
-			strcpy(fields[k++], token);
+			strncpy(fields[k++], token, sizeof(fields[0]) - 1);
 		}
 
 		r = X509_REVOKED_new();
