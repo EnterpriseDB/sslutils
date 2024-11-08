@@ -278,7 +278,7 @@ static int unpack_revinfo(ASN1_TIME** prevtm, int* preason, ASN1_OBJECT** phold,
 
 	if(!tmp)
 	{
-		sprintf (errBuffer, "memory allocation failure\n");
+		snprintf (errBuffer, sizeof(errBuffer), "memory allocation failure\n");
 		goto err;
 	}
 
@@ -303,12 +303,12 @@ static int unpack_revinfo(ASN1_TIME** prevtm, int* preason, ASN1_OBJECT** phold,
 		*prevtm = ASN1_UTCTIME_new();
 		if(!*prevtm)
 		{
-			sprintf (errBuffer, "memory allocation failure\n");
+			snprintf (errBuffer, sizeof(errBuffer), "memory allocation failure\n");
 			goto err;
 		}
 		if (!ASN1_UTCTIME_set_string(*prevtm, rtime_str))
 		{
-			sprintf (errBuffer, "invalid revocation date %s\n", rtime_str);
+			snprintf (errBuffer, sizeof(errBuffer), "invalid revocation date %s\n", rtime_str);
 			goto err;
 		}
 	}
@@ -328,7 +328,7 @@ static int unpack_revinfo(ASN1_TIME** prevtm, int* preason, ASN1_OBJECT** phold,
 		}
 		if (reason_code == OCSP_REVOKED_STATUS_NOSTATUS)
 		{
-			sprintf (errBuffer, "invalid reason code %s\n", reason_str);
+			snprintf (errBuffer, sizeof(errBuffer), "invalid reason code %s\n", reason_str);
 			goto err;
 		}
 
@@ -338,7 +338,7 @@ static int unpack_revinfo(ASN1_TIME** prevtm, int* preason, ASN1_OBJECT** phold,
 		{
 			if (!arg_str)
 			{
-				sprintf (errBuffer, "missing hold instruction\n");
+				snprintf (errBuffer, sizeof(errBuffer), "missing hold instruction\n");
 				goto err;
 			}
 			reason_code = OCSP_REVOKED_STATUS_CERTIFICATEHOLD;
@@ -346,7 +346,7 @@ static int unpack_revinfo(ASN1_TIME** prevtm, int* preason, ASN1_OBJECT** phold,
 
 			if (!hold)
 			{
-				sprintf (errBuffer, "invalid object identifier %s\n", arg_str);
+				snprintf (errBuffer, sizeof(errBuffer), "invalid object identifier %s\n", arg_str);
 				goto err;
 			}
 			if (phold)
@@ -356,18 +356,18 @@ static int unpack_revinfo(ASN1_TIME** prevtm, int* preason, ASN1_OBJECT** phold,
 		{
 			if (!arg_str)
 			{
-				sprintf (errBuffer, "missing compromised time\n");
+				snprintf (errBuffer, sizeof(errBuffer), "missing compromised time\n");
 				goto err;
 			}
 			comp_time = ASN1_GENERALIZEDTIME_new();
 			if(!comp_time)
 			{
-				sprintf (errBuffer, "memory allocation failure\n");
+				snprintf (errBuffer, sizeof(errBuffer), "memory allocation failure\n");
 				goto err;
 			}
 			if (!ASN1_GENERALIZEDTIME_set_string(comp_time, arg_str))
 			{
-				sprintf (errBuffer, "invalid compromised time %s\n", arg_str);
+				snprintf (errBuffer, sizeof(errBuffer), "invalid compromised time %s\n", arg_str);
 				goto err;
 			}
 			if (reason_code == 9)
@@ -1400,7 +1400,7 @@ openssl_revoke_certificate(PG_FUNCTION_ARGS)
 
 		while ((token = string_sep(&p, sep)) != NULL)
 		{
-			strcpy(fields[k++], token);
+			strncpy(fields[k++], token, sizeof(fields[0]) - 1);
 		}
 
 		r = X509_REVOKED_new();
