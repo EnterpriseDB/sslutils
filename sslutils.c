@@ -26,6 +26,8 @@
 #include <openssl/evp.h>
 #include <openssl/asn1.h>
 #include <openssl/x509v3.h>
+#include <openssl/bn.h>
+
 
 #include "fmgr.h"
 #include "utils/builtins.h"
@@ -102,7 +104,8 @@ time_t ASN1_GetTimeT(ASN1_TIME* time);
 void
 _PG_init(void)
 {
-	SSL_load_error_strings();
+	OPENSSL_init_ssl(OPENSSL_INIT_LOAD_SSL_STRINGS \
+		| OPENSSL_INIT_LOAD_CRYPTO_STRINGS, NULL);
 }
 
 /* Report an error within OpenSSL. */
@@ -222,7 +225,7 @@ static int revoke(const char* dbfile, X509* x)
 	// Insert new record to index.txt
 	row[DB_type] = (char *)OPENSSL_malloc(2);
 
-	tm = X509_get_notAfter(x);
+	tm = X509_getm_notAfter(x);
 	row[DB_exp_date] = (char *)OPENSSL_malloc(tm->length + 1);
 	memcpy(row[DB_exp_date], tm->data, tm->length);
 	row[DB_exp_date][tm->length] = '\0';
@@ -838,13 +841,13 @@ openssl_csr_to_crt(PG_FUNCTION_ARGS)
 		goto out;
 	}
 
-	if (!X509_gmtime_adj(X509_get_notBefore(certificate), 0))
+	if (!X509_gmtime_adj(X509_getm_notBefore(certificate), 0))
 	{
 		err = "Error_setting_validity_before_time";
 		goto out;
 	}
 
-	if (!X509_gmtime_adj(X509_get_notAfter(certificate), (long)60 * 60 * 24 * VALIDITY_DAYS))
+	if (!X509_gmtime_adj(X509_getm_notAfter(certificate), (long)60 * 60 * 24 * VALIDITY_DAYS))
 	{
 		err = "Error_setting_validity_before_time";
 		goto out;
@@ -1079,7 +1082,7 @@ openssl_rsa_generate_crl(PG_FUNCTION_ARGS)
 		goto out;
 	}
 	X509_gmtime_adj(tmptm,0);
-	X509_CRL_set_lastUpdate(crl, tmptm);
+	X509_CRL_set1_lastUpdate(crl, tmptm);
 
 	if (!X509_gmtime_adj(tmptm, (long)60 * 60 * 24 * VALIDITY_DAYS))
 	{
@@ -1087,7 +1090,7 @@ openssl_rsa_generate_crl(PG_FUNCTION_ARGS)
 		 goto out;
 	}
 
-	X509_CRL_set_nextUpdate(crl, tmptm);
+	X509_CRL_set1_nextUpdate(crl, tmptm);
 
 	X509_CRL_sort(crl);
 
@@ -1185,10 +1188,10 @@ openssl_is_crt_expire_on(PG_FUNCTION_ARGS)
 		goto out;
 	}
 
-	not_after = X509_get_notAfter(cert);
+	not_after = X509_getm_notAfter(cert);
 	if (!not_after)
 	{
-		err = "X509_get_notAfter";
+		err = "X509_getm_notAfter";
 		goto out;
 	}
 
@@ -1369,7 +1372,7 @@ openssl_revoke_certificate(PG_FUNCTION_ARGS)
 	}
 
 	X509_gmtime_adj(tmptm, 0);
-	X509_CRL_set_lastUpdate(crl, tmptm);
+	X509_CRL_set1_lastUpdate(crl, tmptm);
 
 	if (!X509_gmtime_adj(tmptm, (long)60 * 60 * 24 * VALIDITY_DAYS))
 	{
@@ -1377,7 +1380,7 @@ openssl_revoke_certificate(PG_FUNCTION_ARGS)
 		goto out;
 	}
 
-	X509_CRL_set_nextUpdate(crl, tmptm);
+	X509_CRL_set1_nextUpdate(crl, tmptm);
 
 	/*
 	 * Read every serial number from revoke certificate db file and create a
@@ -1590,10 +1593,10 @@ openssl_get_crt_expiry_date(PG_FUNCTION_ARGS)
 		goto out;
 	}
 
-	not_after = X509_get_notAfter(cert);
+	not_after = X509_getm_notAfter(cert);
 	if (!not_after)
 	{
-		err = "X509_get_notAfter";
+		err = "X509_getm_notAfter";
 		goto out;
 	}
 
