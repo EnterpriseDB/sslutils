@@ -95,40 +95,14 @@ PG_FUNCTION_INFO_V1(openssl_is_crt_expire_on);
 PG_FUNCTION_INFO_V1(openssl_revoke_certificate);
 PG_FUNCTION_INFO_V1(openssl_get_crt_expiry_date);
 
-time_t ASN1_GetTimeT(ASN1_TIME* time);
+time_t ASN1_GetTimeT(const ASN1_TIME* time);
 
 #define PEM_SSLUTILS_VERSION "1.3"
-
-/* In case some of OPENSSL preprocessor macros are not defined yet */
-# ifndef SSL_load_error_strings
-#  define SSL_load_error_strings() \
-    OPENSSL_init_ssl(OPENSSL_INIT_LOAD_SSL_STRINGS \
-                     | OPENSSL_INIT_LOAD_CRYPTO_STRINGS, NULL)
-# endif
-# ifndef X509_get_notBefore
-#  define X509_get_notBefore X509_getm_notBefore
-# endif
-# ifndef X509_get_notAfter
-#  define X509_get_notAfter X509_getm_notAfter
-# endif
-# ifndef X509_set_notBefore
-#  define X509_set_notBefore X509_set1_notBefore
-# endif
-# ifndef X509_set_notAfter
-#  define X509_set_notAfter X509_set1_notAfter
-# endif
-# ifndef X509_CRL_set_lastUpdate
-#  define X509_CRL_set_lastUpdate X509_CRL_set1_lastUpdate
-# endif
-# ifndef X509_CRL_set_nextUpdate
-#  define X509_CRL_set_nextUpdate X509_CRL_set1_nextUpdate
-#endif
 
 /* On module load, make sure SSL error strings are available. */
 void
 _PG_init(void)
 {
-	SSL_load_error_strings();
 }
 
 /* Report an error within OpenSSL. */
@@ -190,7 +164,7 @@ static char* make_revocation_str()
 static int revoke(const char* dbfile, X509* x)
 {
 	int i;
-	ASN1_UTCTIME* tm = NULL;
+	const ASN1_UTCTIME* tm = NULL;
 	char* rev_str = NULL;
 	BIGNUM* bn = NULL;
 	char* row[DB_NUMBER];
@@ -248,7 +222,7 @@ static int revoke(const char* dbfile, X509* x)
 	// Insert new record to index.txt
 	row[DB_type] = (char *)OPENSSL_malloc(2);
 
-	tm = X509_get_notAfter(x);
+	tm = X509_get0_notAfter(x);
 	row[DB_exp_date] = (char *)OPENSSL_malloc(tm->length + 1);
 	memcpy(row[DB_exp_date], tm->data, tm->length);
 	row[DB_exp_date][tm->length] = '\0';
@@ -864,13 +838,13 @@ openssl_csr_to_crt(PG_FUNCTION_ARGS)
 		goto out;
 	}
 
-	if (!X509_gmtime_adj(X509_get_notBefore(certificate), 0))
+	if (!X509_gmtime_adj(X509_get0_notBefore(certificate), 0))
 	{
 		err = "Error_setting_validity_before_time";
 		goto out;
 	}
 
-	if (!X509_gmtime_adj(X509_get_notAfter(certificate), (long)60 * 60 * 24 * VALIDITY_DAYS))
+	if (!X509_gmtime_adj(X509_get0_notAfter(certificate), (long)60 * 60 * 24 * VALIDITY_DAYS))
 	{
 		err = "Error_setting_validity_before_time";
 		goto out;
@@ -1105,7 +1079,7 @@ openssl_rsa_generate_crl(PG_FUNCTION_ARGS)
 		goto out;
 	}
 	X509_gmtime_adj(tmptm,0);
-	X509_CRL_set_lastUpdate(crl, tmptm);
+	X509_CRL_set1_lastUpdate(crl, tmptm);
 
 	if (!X509_gmtime_adj(tmptm, (long)60 * 60 * 24 * VALIDITY_DAYS))
 	{
@@ -1113,7 +1087,7 @@ openssl_rsa_generate_crl(PG_FUNCTION_ARGS)
 		 goto out;
 	}
 
-	X509_CRL_set_nextUpdate(crl, tmptm);
+	X509_CRL_set1_nextUpdate(crl, tmptm);
 
 	X509_CRL_sort(crl);
 
@@ -1183,7 +1157,7 @@ openssl_is_crt_expire_on(PG_FUNCTION_ARGS)
 {
 	text			*cert_file_path = NULL;
 	X509			*cert = NULL;
-	ASN1_TIME		*not_after = NULL;
+	const ASN1_TIME		*not_after = NULL;
 	char			*err = NULL;
 	FILE			*fp_cert_file = NULL;
 	TimestampTz		cmp_time;
@@ -1211,10 +1185,10 @@ openssl_is_crt_expire_on(PG_FUNCTION_ARGS)
 		goto out;
 	}
 
-	not_after = X509_get_notAfter(cert);
+	not_after = X509_get0_notAfter(cert);
 	if (!not_after)
 	{
-		err = "X509_get_notAfter";
+		err = "X509_get0_notAfter";
 		goto out;
 	}
 
@@ -1395,7 +1369,7 @@ openssl_revoke_certificate(PG_FUNCTION_ARGS)
 	}
 
 	X509_gmtime_adj(tmptm, 0);
-	X509_CRL_set_lastUpdate(crl, tmptm);
+	X509_CRL_set1_lastUpdate(crl, tmptm);
 
 	if (!X509_gmtime_adj(tmptm, (long)60 * 60 * 24 * VALIDITY_DAYS))
 	{
@@ -1403,7 +1377,7 @@ openssl_revoke_certificate(PG_FUNCTION_ARGS)
 		goto out;
 	}
 
-	X509_CRL_set_nextUpdate(crl, tmptm);
+	X509_CRL_set1_nextUpdate(crl, tmptm);
 
 	/*
 	 * Read every serial number from revoke certificate db file and create a
@@ -1543,7 +1517,7 @@ out:
 *
 */
 time_t
-ASN1_GetTimeT(ASN1_TIME* time)
+ASN1_GetTimeT(const ASN1_TIME* time)
 {
 	struct tm t;
 	const char* str = (const char*)time->data;
@@ -1589,7 +1563,7 @@ openssl_get_crt_expiry_date(PG_FUNCTION_ARGS)
 {
 	text			*cert_file_path = NULL;
 	X509			*cert = NULL;
-	ASN1_TIME		*not_after = NULL;
+	const ASN1_TIME		*not_after = NULL;
 	char			*err = NULL;
 	BIO				*bio_cert_file = NULL;
 	time_t			tNotAfter;
@@ -1616,10 +1590,10 @@ openssl_get_crt_expiry_date(PG_FUNCTION_ARGS)
 		goto out;
 	}
 
-	not_after = X509_get_notAfter(cert);
+	not_after = X509_get0_notAfter(cert);
 	if (!not_after)
 	{
-		err = "X509_get_notAfter";
+		err = "X509_get0_notAfter";
 		goto out;
 	}
 
