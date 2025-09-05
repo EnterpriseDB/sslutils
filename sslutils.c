@@ -38,7 +38,7 @@
 #endif
 
 #define SERIAL_RAND_BITS  64
-#define VALIDITY_DAYS  3650
+#define DEDAULT_VALIDITY_DAYS  3650
 
 #define BUFFER_PADDING_BYTES 50
 
@@ -729,6 +729,7 @@ openssl_csr_to_crt(PG_FUNCTION_ARGS)
 	char       *data = NULL;
 	long       len;
 	text       *res = NULL;
+	int        validity_days = DEDAULT_VALIDITY_DAYS;
 
 	BIO        *bio_cert_file = NULL;
 	BIO        *bio_key = NULL;
@@ -844,7 +845,11 @@ openssl_csr_to_crt(PG_FUNCTION_ARGS)
 		goto out;
 	}
 
-	if (!X509_gmtime_adj(X509_get0_notAfter(certificate), (long)60 * 60 * 24 * VALIDITY_DAYS))
+	if (!PG_ARGISNULL(3))
+	{
+		validity_days = PG_GETARG_INT32(3);
+	}
+	if (!X509_gmtime_adj(X509_get0_notAfter(certificate), (long)60 * 60 * 24 * validity_days))
 	{
 		err = "Error_setting_validity_before_time";
 		goto out;
@@ -993,6 +998,7 @@ openssl_rsa_generate_crl(PG_FUNCTION_ARGS)
 	char       *data = NULL;
 	long       len;
 	text       *res = NULL;
+	int        validity_days = DEDAULT_VALIDITY_DAYS;
 
 	BIO        *bio_cert_file = NULL;
 	BIO        *bio_key = NULL;
@@ -1081,7 +1087,11 @@ openssl_rsa_generate_crl(PG_FUNCTION_ARGS)
 	X509_gmtime_adj(tmptm,0);
 	X509_CRL_set1_lastUpdate(crl, tmptm);
 
-	if (!X509_gmtime_adj(tmptm, (long)60 * 60 * 24 * VALIDITY_DAYS))
+	if (!PG_ARGISNULL(2))
+	{
+		validity_days = PG_GETARG_INT32(2);
+	}
+	if (!X509_gmtime_adj(tmptm, (long)60 * 60 * 24 * validity_days))
 	{
 		 err = "error setting CRL nextUpdate";
 		 goto out;
@@ -1253,6 +1263,7 @@ openssl_revoke_certificate(PG_FUNCTION_ARGS)
 	char       *revoke_cert_db_file = "revoke_cert.db";
 	FILE       *file_revoke_cert_db = NULL;
 	int        ret = 0;
+	int        validity_days = DEDAULT_VALIDITY_DAYS;
 
 	char fields[6][64];
 	char* sep = "\t";
@@ -1371,7 +1382,11 @@ openssl_revoke_certificate(PG_FUNCTION_ARGS)
 	X509_gmtime_adj(tmptm, 0);
 	X509_CRL_set1_lastUpdate(crl, tmptm);
 
-	if (!X509_gmtime_adj(tmptm, (long)60 * 60 * 24 * VALIDITY_DAYS))
+	if (!PG_ARGISNULL(2))
+	{
+		validity_days = PG_GETARG_INT32(2);
+	}
+	if (!X509_gmtime_adj(tmptm, (long)60 * 60 * 24 * validity_days))
 	{
 		err = "error setting CRL nextUpdate";
 		goto out;
