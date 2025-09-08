@@ -97,7 +97,7 @@ PG_FUNCTION_INFO_V1(openssl_get_crt_expiry_date);
 
 time_t ASN1_GetTimeT(const ASN1_TIME* time);
 
-#define PEM_SSLUTILS_VERSION "1.3"
+#define PEM_SSLUTILS_VERSION "1.4"
 
 /* On module load, make sure SSL error strings are available. */
 void
