@@ -100,4 +100,4 @@ Returns: end date of the certificate.
 ========================================================
 This extension is released under the PostgreSQL Licence.
 
-Copyright (c) 2010 - 2020, EnterpriseDB Corporation.
+Copyright (c) 2010 - 2025, EnterpriseDB Corporation.
