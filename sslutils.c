@@ -1422,7 +1422,6 @@ openssl_revoke_certificate(PG_FUNCTION_ARGS)
 		if (r == NULL)
 			goto out;
 
-		fprintf(stdout, "Rev data: %s, Expired date: %s\n", fields[DB_rev_date], fields[DB_exp_date]);
 		retVal = make_revoked(r, fields[DB_rev_date]);
 		if (retVal <= 0)
 			goto out;
