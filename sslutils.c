@@ -1268,7 +1268,6 @@ openssl_revoke_certificate(PG_FUNCTION_ARGS)
 	char fields[6][64];
 	char* sep = "\t";
 	char* token = NULL;
-	int k = 0;
 	char* p = NULL;
 	X509_REVOKED *r = NULL;
 	ASN1_INTEGER *tmpser = NULL;
@@ -1413,6 +1412,7 @@ openssl_revoke_certificate(PG_FUNCTION_ARGS)
 		memset(fields, 0, 256);
 		p = line;
 
+		int k = 0;
 		while ((token = string_sep(&p, sep)) != NULL)
 		{
 			strncpy(fields[k++], token, sizeof(fields[0]) - 1);
@@ -1422,6 +1422,7 @@ openssl_revoke_certificate(PG_FUNCTION_ARGS)
 		if (r == NULL)
 			goto out;
 
+		fprintf(stdout, "Rev data: %s, Expired date: %s\n", fields[DB_rev_date], fields[DB_exp_date]);
 		retVal = make_revoked(r, fields[DB_rev_date]);
 		if (retVal <= 0)
 			goto out;
