@@ -109,6 +109,8 @@ PG_FUNCTION_INFO_V1(openssl_is_crt_expire_on);
 PG_FUNCTION_INFO_V1(openssl_revoke_certificate);
 PG_FUNCTION_INFO_V1(openssl_get_crt_expiry_date);
 
+#define ERR_MSG_INVALID_VALIDITY_DAYS "Validity (in days) must be > 0"
+
 time_t ASN1_GetTimeT(const ASN1_TIME* time);
 
 #define PEM_SSLUTILS_VERSION "1.4"
@@ -862,6 +864,11 @@ openssl_csr_to_crt(PG_FUNCTION_ARGS)
 	if (!PG_ARGISNULL(3))
 	{
 		validity_days = PG_GETARG_INT32(3);
+		if (validity_days <= 0)
+		{
+			err = ERR_MSG_INVALID_VALIDITY_DAYS;
+			goto out;
+		}
 	}
 	if (!X509_gmtime_adj(X509_get0_notAfter(certificate), (long)60 * 60 * 24 * validity_days))
 	{
@@ -1104,6 +1111,11 @@ openssl_rsa_generate_crl(PG_FUNCTION_ARGS)
 	if (!PG_ARGISNULL(2))
 	{
 		validity_days = PG_GETARG_INT32(2);
+		if (validity_days <= 0)
+		{
+			err = ERR_MSG_INVALID_VALIDITY_DAYS;
+			goto out;
+		}
 	}
 	if (!X509_gmtime_adj(tmptm, (long)60 * 60 * 24 * validity_days))
 	{
@@ -1398,6 +1410,11 @@ openssl_revoke_certificate(PG_FUNCTION_ARGS)
 	if (!PG_ARGISNULL(2))
 	{
 		validity_days = PG_GETARG_INT32(2);
+		if (validity_days <= 0)
+		{
+			err = ERR_MSG_INVALID_VALIDITY_DAYS;
+			goto out;
+		}
 	}
 	if (!X509_gmtime_adj(tmptm, (long)60 * 60 * 24 * validity_days))
 	{
