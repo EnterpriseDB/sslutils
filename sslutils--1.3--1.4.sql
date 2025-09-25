@@ -11,7 +11,7 @@ COMMENT ON FUNCTION openssl_csr_to_crt(text, text, text, integer) IS 'Generates 
 -- param1 : csr or certificate signing request 
 -- param2 : Path to CA certificate OR NULL If CA self signed certificate is required.
 -- param3 : Path to CA private key OR Path to self private key, If param2 is NULL.
--- param4 : The validity days of generated certificate.';
+-- param4 : The validity (in days) for the generated certificate.';
 
 CREATE OR REPLACE FUNCTION openssl_rsa_generate_crl(text, text, integer DEFAULT NULL)
 RETURNS text
@@ -21,7 +21,7 @@ COMMENT ON FUNCTION openssl_rsa_generate_crl(text, text, integer) IS 'Generates 
 -- Parameters:
 -- param1 : Path to CA certificate.
 -- param2 : Path to CA private key.
--- param3 : The validity days of generated CRL.';
+-- param3 : The validity (in days) for the generated CRL.';
 
 CREATE OR REPLACE FUNCTION openssl_revoke_certificate(text, text, integer DEFAULT NULL)
 RETURNS text
@@ -31,4 +31,4 @@ COMMENT ON FUNCTION openssl_revoke_certificate(text, text, integer) IS 'Revoke C
 -- Parameters:
 -- param1 : Path to client certificate to be revoked.
 -- param2 : CRL file name specified in postgres config file.
--- param3 : The validity days of revoked certificate.';
+-- param3 : The validity (in days) for the revoked certificate.';

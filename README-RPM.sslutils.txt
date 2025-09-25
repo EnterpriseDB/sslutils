@@ -62,7 +62,7 @@ Purpose: Generates a self-signed certificate (or a CA certificate)
 Param 1: CSR
 Param 2: Path to the CA certificate OR NULL if generating a CA certificate.
 Param 3: Path to the CA private key OR path to a private key, If param2 is NULL.
-Param 4: The validity days of generated certificate, 3650 days by default
+Param 4: The validity (in days) for the generated certificate, 3650 days by default
 Returns: The certificate.
 
 openssl_rsa_generate_crl(text, text, integer DEFAULT NULL) RETURNS text
@@ -70,7 +70,7 @@ openssl_rsa_generate_crl(text, text, integer DEFAULT NULL) RETURNS text
 Purpose: Generates a default certificate revocation list.
 Param 1: Path to CA certificate.
 Param 2: Path to CA private key.
-Param 3: The validity days of generated certificate, 3650 days by default
+Param 3: The validity (in days) for the generated certificate, 3650 days by default
 Returns: The CRL.
 
 
@@ -88,7 +88,7 @@ openssl_revoke_certificate(text, text, integer DEFAULT NULL) RETURNS text
 Purpose: Revoke the client certificate and re-generate crl file.
 Param 1: Path to client certificate to be revoked.
 Param 2: CRL file name specified in postgres config file.
-Param 3: The validity days of generated certificate, 3650 days by default
+Param 3: The validity (in days) for the generated certificate, 3650 days by default
 Returns: The CRL.
 
 openssl_get_crt_expiry_date(text)
