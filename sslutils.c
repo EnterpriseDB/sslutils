@@ -2,7 +2,7 @@
  *
  * Postgres Enterprise Manager - Openssl utils plugin
  *
- * Copyright (C) 2011 - 2020, EnterpriseDB Corporation. All rights reserved.
+ * Copyright (C) 2011 - 2025, EnterpriseDB Corporation. All rights reserved.
  *
  * This code is licensed under the EnterpriseDB Limited Use License for use
  * by customers with an active subscription to EDB Postgres Standard,
@@ -37,8 +37,22 @@
 #include "varatt.h"
 #endif
 
+// For compatibility with OpenSSL 1.0.2
+#ifndef X509_get0_notBefore
+#define X509_get0_notBefore X509_get_notBefore
+#endif
+#ifndef X509_get0_notAfter
+#define X509_get0_notAfter X509_get_notAfter
+#endif
+#ifndef X509_CRL_set1_nextUpdate
+#define X509_CRL_set1_nextUpdate X509_CRL_set_nextUpdate
+#endif
+#ifndef X509_CRL_set1_lastUpdate
+#define X509_CRL_set1_lastUpdate X509_CRL_set_lastUpdate
+#endif
+
 #define SERIAL_RAND_BITS  64
-#define VALIDITY_DAYS  3650
+#define DEDAULT_VALIDITY_DAYS  3650
 
 #define BUFFER_PADDING_BYTES 50
 
@@ -95,9 +109,11 @@ PG_FUNCTION_INFO_V1(openssl_is_crt_expire_on);
 PG_FUNCTION_INFO_V1(openssl_revoke_certificate);
 PG_FUNCTION_INFO_V1(openssl_get_crt_expiry_date);
 
+#define ERR_MSG_INVALID_VALIDITY_DAYS "Validity (in days) must be > 0"
+
 time_t ASN1_GetTimeT(const ASN1_TIME* time);
 
-#define PEM_SSLUTILS_VERSION "1.3"
+#define PEM_SSLUTILS_VERSION "1.4"
 
 /* On module load, make sure SSL error strings are available. */
 void
@@ -729,6 +745,7 @@ openssl_csr_to_crt(PG_FUNCTION_ARGS)
 	char       *data = NULL;
 	long       len;
 	text       *res = NULL;
+	int        validity_days = DEDAULT_VALIDITY_DAYS;
 
 	BIO        *bio_cert_file = NULL;
 	BIO        *bio_key = NULL;
@@ -844,7 +861,16 @@ openssl_csr_to_crt(PG_FUNCTION_ARGS)
 		goto out;
 	}
 
-	if (!X509_gmtime_adj(X509_get0_notAfter(certificate), (long)60 * 60 * 24 * VALIDITY_DAYS))
+	if (!PG_ARGISNULL(3))
+	{
+		validity_days = PG_GETARG_INT32(3);
+		if (validity_days <= 0)
+		{
+			err = ERR_MSG_INVALID_VALIDITY_DAYS;
+			goto out;
+		}
+	}
+	if (!X509_gmtime_adj(X509_get0_notAfter(certificate), (long)60 * 60 * 24 * validity_days))
 	{
 		err = "Error_setting_validity_before_time";
 		goto out;
@@ -993,6 +1019,7 @@ openssl_rsa_generate_crl(PG_FUNCTION_ARGS)
 	char       *data = NULL;
 	long       len;
 	text       *res = NULL;
+	int        validity_days = DEDAULT_VALIDITY_DAYS;
 
 	BIO        *bio_cert_file = NULL;
 	BIO        *bio_key = NULL;
@@ -1081,7 +1108,16 @@ openssl_rsa_generate_crl(PG_FUNCTION_ARGS)
 	X509_gmtime_adj(tmptm,0);
 	X509_CRL_set1_lastUpdate(crl, tmptm);
 
-	if (!X509_gmtime_adj(tmptm, (long)60 * 60 * 24 * VALIDITY_DAYS))
+	if (!PG_ARGISNULL(2))
+	{
+		validity_days = PG_GETARG_INT32(2);
+		if (validity_days <= 0)
+		{
+			err = ERR_MSG_INVALID_VALIDITY_DAYS;
+			goto out;
+		}
+	}
+	if (!X509_gmtime_adj(tmptm, (long)60 * 60 * 24 * validity_days))
 	{
 		 err = "error setting CRL nextUpdate";
 		 goto out;
@@ -1253,11 +1289,11 @@ openssl_revoke_certificate(PG_FUNCTION_ARGS)
 	char       *revoke_cert_db_file = "revoke_cert.db";
 	FILE       *file_revoke_cert_db = NULL;
 	int        ret = 0;
+	int        validity_days = DEDAULT_VALIDITY_DAYS;
 
 	char fields[6][64];
 	char* sep = "\t";
 	char* token = NULL;
-	int k = 0;
 	char* p = NULL;
 	X509_REVOKED *r = NULL;
 	ASN1_INTEGER *tmpser = NULL;
@@ -1371,7 +1407,16 @@ openssl_revoke_certificate(PG_FUNCTION_ARGS)
 	X509_gmtime_adj(tmptm, 0);
 	X509_CRL_set1_lastUpdate(crl, tmptm);
 
-	if (!X509_gmtime_adj(tmptm, (long)60 * 60 * 24 * VALIDITY_DAYS))
+	if (!PG_ARGISNULL(2))
+	{
+		validity_days = PG_GETARG_INT32(2);
+		if (validity_days <= 0)
+		{
+			err = ERR_MSG_INVALID_VALIDITY_DAYS;
+			goto out;
+		}
+	}
+	if (!X509_gmtime_adj(tmptm, (long)60 * 60 * 24 * validity_days))
 	{
 		err = "error setting CRL nextUpdate";
 		goto out;
@@ -1398,6 +1443,7 @@ openssl_revoke_certificate(PG_FUNCTION_ARGS)
 		memset(fields, 0, 256);
 		p = line;
 
+		int k = 0;
 		while ((token = string_sep(&p, sep)) != NULL)
 		{
 			strncpy(fields[k++], token, sizeof(fields[0]) - 1);

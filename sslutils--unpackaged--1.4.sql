@@ -1,30 +1,34 @@
+ALTER EXTENSION sslutils ADD function openssl_rsa_generate_key(integer);
+ALTER EXTENSION sslutils ADD function openssl_rsa_key_to_csr(text, text, text, text, text, text, text);
+ALTER EXTENSION sslutils ADD function openssl_csr_to_crt(text, text, text);
+ALTER EXTENSION sslutils ADD function openssl_rsa_generate_crl(text, text);
+
 CREATE OR REPLACE FUNCTION sslutils_version()
 RETURNS text
 AS 'MODULE_PATHNAME', 'sslutils_version'
 LANGUAGE C IMMUTABLE;
 COMMENT ON FUNCTION sslutils_version() IS 'Returns the current version of sslutils';
 
-CREATE OR REPLACE FUNCTION openssl_rsa_generate_key(integer)
-RETURNS text
-AS '$libdir/sslutils', 'openssl_rsa_generate_key'
-LANGUAGE C IMMUTABLE STRICT;
-COMMENT ON FUNCTION  openssl_rsa_generate_key(integer) IS 'Generates the RSA Private Key.
--- Parameter:
--- param1 : Number of bits.';
-
-CREATE OR REPLACE FUNCTION openssl_rsa_key_to_csr(text, text, text, text, text, text, text)
-RETURNS text
-AS '$libdir/sslutils', 'openssl_rsa_key_to_csr'
-LANGUAGE C IMMUTABLE STRICT;
-COMMENT ON FUNCTION openssl_rsa_key_to_csr(text, text, text, text, text, text, text) IS 'Generates the Certificate Signing Request (CSR).
+CREATE OR REPLACE FUNCTION openssl_is_crt_expire_on(text, timestamptz)
+RETURNS integer
+AS 'MODULE_PATHNAME', 'openssl_is_crt_expire_on'
+LANGUAGE C IMMUTABLE;
+COMMENT ON FUNCTION openssl_is_crt_expire_on(text, timestamptz) IS 'Compare certificate expiry on given time.
 -- Parameters:
--- param1 : rsa key
--- param2 : CN or common name e.g. agentN
--- param3 : C or Country
--- param4 : ST or State
--- param5 : L or Location (City)
--- param6 : OU or Organization Unit
--- param7 : email.';
+-- param1 : Path to certificate.
+-- param2 : time to compare with end date';
+
+CREATE OR REPLACE FUNCTION openssl_get_crt_expiry_date(text)
+RETURNS timestamptz
+AS 'MODULE_PATHNAME', 'openssl_get_crt_expiry_date'
+LANGUAGE C IMMUTABLE;
+COMMENT ON FUNCTION openssl_get_crt_expiry_date(text) IS 'Return the expiry date of the given certificate.
+-- Parameters:
+-- param1 : Path to certificate.';
+
+
+DROP FUNCTION openssl_csr_to_crt(text, text, text);
+DROP FUNCTION openssl_rsa_generate_crl(text, text);
 
 CREATE OR REPLACE FUNCTION openssl_csr_to_crt(text, text, text, integer DEFAULT NULL)
 RETURNS text
@@ -47,15 +51,6 @@ COMMENT ON FUNCTION openssl_rsa_generate_crl(text, text, integer) IS 'Generates 
 -- param2 : Path to CA private key.
 -- param3 : The validity (in days) for the generated CRL.';
 
-CREATE OR REPLACE FUNCTION openssl_is_crt_expire_on(text, timestamptz)
-RETURNS integer
-AS '$libdir/sslutils', 'openssl_is_crt_expire_on'
-LANGUAGE C IMMUTABLE;
-COMMENT ON FUNCTION openssl_is_crt_expire_on(text, timestamptz) IS 'Compare certificate expiry on given time.
--- Parameters:
--- param1 : Path to certificate.
--- param2 : time to compare with end date';
-
 CREATE OR REPLACE FUNCTION openssl_revoke_certificate(text, text, integer DEFAULT NULL)
 RETURNS text
 AS '$libdir/sslutils', 'openssl_revoke_certificate'
@@ -65,12 +60,3 @@ COMMENT ON FUNCTION openssl_revoke_certificate(text, text, integer) IS 'Revoke C
 -- param1 : Path to client certificate to be revoked.
 -- param2 : CRL file name specified in postgres config file.
 -- param3 : The validity (in days) for the revoked certificate.';
-
-CREATE OR REPLACE FUNCTION openssl_get_crt_expiry_date(text)
-RETURNS timestamptz
-AS '$libdir/sslutils', 'openssl_get_crt_expiry_date'
-LANGUAGE C IMMUTABLE;
-COMMENT ON FUNCTION openssl_get_crt_expiry_date(text) IS 'Return the expiry date of the given certificate.
--- Parameters:
--- param1 : Path to certificate.';
- 
