@@ -38,16 +38,17 @@
 #endif
 
 // For compatibility with OpenSSL 1.0.2
-#ifndef X509_get0_notBefore
+// OpenSSL 1.0.2 declares X509_get_notBefore as a function, instead of a preprocessor macro as in newer versions
+#ifndef X509_get_notBefore
 #define X509_get0_notBefore X509_get_notBefore
 #endif
-#ifndef X509_get0_notAfter
+#ifndef X509_get_notAfter
 #define X509_get0_notAfter X509_get_notAfter
 #endif
-#ifndef X509_CRL_set1_nextUpdate
+#ifndef X509_CRL_set_nextUpdate
 #define X509_CRL_set1_nextUpdate X509_CRL_set_nextUpdate
 #endif
-#ifndef X509_CRL_set1_lastUpdate
+#ifndef X509_CRL_set_lastUpdate
 #define X509_CRL_set1_lastUpdate X509_CRL_set_lastUpdate
 #endif
 
