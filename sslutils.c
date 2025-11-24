@@ -37,19 +37,17 @@
 #include "varatt.h"
 #endif
 
-// For compatibility with OpenSSL 1.0.2
-#ifndef X509_get0_notBefore
+/*
+ * For compatibility with OpenSSL 1.0.2
+ *
+ * OpenSSL 1.0.2 has no function like X509_get0_notBefore, it has X509_get_notBefore instead
+ */
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
 #define X509_get0_notBefore X509_get_notBefore
-#endif
-#ifndef X509_get0_notAfter
 #define X509_get0_notAfter X509_get_notAfter
-#endif
-#ifndef X509_CRL_set1_nextUpdate
 #define X509_CRL_set1_nextUpdate X509_CRL_set_nextUpdate
-#endif
-#ifndef X509_CRL_set1_lastUpdate
 #define X509_CRL_set1_lastUpdate X509_CRL_set_lastUpdate
-#endif
+#endif // if OPENSSL_VERSION_NUMBER < 0x10100000L
 
 #define SERIAL_RAND_BITS  64
 #define DEDAULT_VALIDITY_DAYS  3650
