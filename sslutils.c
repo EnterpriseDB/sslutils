@@ -146,6 +146,16 @@ static char* string_sep(char **stringp, const char *delim)
 }
 
 /*
+ * This function is to restrict all file access to $PGDATA or a designated subdirectory
+ */
+static bool validate_path_within_datadir(const char *path) {
+	char resolved[PATH_MAX], datadir_resolved[PATH_MAX];
+	if (!realpath(path, resolved) || !realpath(DataDir, datadir_resolved))
+		return false;
+	return strncmp(resolved, datadir_resolved, strlen(datadir_resolved)) == 0;
+}
+
+/*
  * This function make certificate revocation string.
  */
 static char* make_revocation_str()
