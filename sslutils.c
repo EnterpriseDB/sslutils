@@ -149,10 +149,12 @@ static char* string_sep(char **stringp, const char *delim)
 /*
  * This function is to restrict all file access to $PGDATA or a designated subdirectory
  */
-static bool validate_path_within_datadir(const char *path) {
+static bool validate_path_within_datadir(const char *path)
+{
 	char resolved[PATH_MAX], datadir_resolved[PATH_MAX];
 	if (!realpath(path, resolved) || !realpath(DataDir, datadir_resolved))
 		return false;
+
 	return strncmp(resolved, datadir_resolved, strlen(datadir_resolved)) == 0;
 }
 
@@ -186,7 +188,7 @@ static char* make_revocation_str()
 /*
  * This function revoke client certificate and add entry in database file.
  */
-static int revoke(const char* dbfile, X509* x)
+static int revoke_client_certificate(const char* dbfile, X509* x)
 {
 	int i;
 	const ASN1_UTCTIME* tm = NULL;
@@ -1346,7 +1348,7 @@ openssl_revoke_certificate(PG_FUNCTION_ARGS)
 	}
 
 	// First add certificate to database file index.txt which contains list of revoke certificates.
-	ret = revoke(revoke_cert_db_file, x);
+	ret = revoke_client_certificate(revoke_cert_db_file, x);
 	if (ret == -1)
 	{
 		err = "ADD_CERT_TO_DB_FILE";
