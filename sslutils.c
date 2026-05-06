@@ -18,6 +18,7 @@
  */
 
 #include "postgres.h"
+#include "miscadmin.h"
 
 #include <openssl/err.h>
 #include <openssl/pem.h>
