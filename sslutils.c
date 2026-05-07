@@ -807,7 +807,7 @@ openssl_csr_to_crt(PG_FUNCTION_ARGS)
 	ca_key_file_path = PG_GETARG_TEXT_PP(2);
 	if (!PG_ARGISNULL(2) && !validate_path_within_datadir(ca_key_file_path))
 	{
-		err = "PATH_NOT_IN_PGDATA-3";
+		sprintf(err, "PATH_NOT_IN_PGDATA-3: - DataDir: %s - path: %s", DataDir, ca_key_file_path);
 		goto out;
 	}
 
