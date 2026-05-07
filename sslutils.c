@@ -779,7 +779,7 @@ openssl_csr_to_crt(PG_FUNCTION_ARGS)
 	if (!PG_ARGISNULL(1))
 	{
 		ca_cert_file_path = PG_GETARG_TEXT_PP(1);
-		if (!validate_path_within_datadir(ca_cert_file_path))
+		if (!validate_path_within_datadir(text_to_cstring(ca_cert_file_path)))
 		{
 			err = "PATH_NOT_IN_PGDATA-2";
 			goto out;
@@ -806,9 +806,9 @@ openssl_csr_to_crt(PG_FUNCTION_ARGS)
 		goto out;
 	}
 	ca_key_file_path = PG_GETARG_TEXT_PP(2);
-	if (!PG_ARGISNULL(2) && !validate_path_within_datadir(ca_key_file_path))
+	if (!PG_ARGISNULL(2) && !validate_path_within_datadir(text_to_cstring(ca_key_file_path)))
 	{
-		snprintf(errBuffer, sizeof(errBuffer), "PATH_NOT_IN_PGDATA-3: - DataDir: %s - path: %s", DataDir, ca_key_file_path);
+		snprintf(errBuffer, sizeof(errBuffer), "PATH_NOT_IN_PGDATA-3: - DataDir: %s - path: %s", DataDir, text_to_cstring(ca_key_file_path));
 		goto out;
 	}
 
@@ -1648,7 +1648,7 @@ openssl_get_crt_expiry_date(PG_FUNCTION_ARGS)
 	}
 
 	cert_file_path = PG_GETARG_TEXT_PP(0);
-	if (!validate_path_within_datadir(cert_file_path))
+	if (!validate_path_within_datadir(text_to_cstring(cert_file_path)))
 	{
 		err = "PATH_NOT_IN_PGDATA-1";
 		goto out;
