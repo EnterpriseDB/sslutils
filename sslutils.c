@@ -751,6 +751,7 @@ openssl_csr_to_crt(PG_FUNCTION_ARGS)
 	BIO        *bio = NULL;
 	RSA        *ca_key = NULL;
 	char       *err = NULL;
+	char errBuffer[512] = {0};
 	X509_REQ   *req = NULL;
 	X509       *ca_cert = NULL;
 	char       *data = NULL;
@@ -807,7 +808,7 @@ openssl_csr_to_crt(PG_FUNCTION_ARGS)
 	ca_key_file_path = PG_GETARG_TEXT_PP(2);
 	if (!PG_ARGISNULL(2) && !validate_path_within_datadir(ca_key_file_path))
 	{
-		sprintf(err, "PATH_NOT_IN_PGDATA-3: - DataDir: %s - path: %s", DataDir, ca_key_file_path);
+		snprintf(errBuffer, sizeof(errBuffer), "PATH_NOT_IN_PGDATA-3: - DataDir: %s - path: %s", DataDir, ca_key_file_path);
 		goto out;
 	}
 
@@ -1015,6 +1016,8 @@ out:
 		X509_EXTENSION_free(extension);
 	if (serial_no != NULL)
 		ASN1_INTEGER_free(serial_no);
+	if (errBuffer[0] != 0)
+		report_openssl_error(errBuffer);
 	if (err != NULL)
 		report_openssl_error(err);
 	if (bio_cert_file != NULL)
