@@ -147,7 +147,7 @@ static char* string_sep(char **stringp, const char *delim)
 }
 
 /*
- * This function is to restrict all file access to $PGDATA or a designated subdirectory
+ * This function is to restrict all file access to be under $PGDATA
  */
 static bool validate_path_within_datadir(const char *path)
 {
@@ -751,7 +751,6 @@ openssl_csr_to_crt(PG_FUNCTION_ARGS)
 	BIO        *bio = NULL;
 	RSA        *ca_key = NULL;
 	char       *err = NULL;
-	char errBuffer[512] = {0};
 	X509_REQ   *req = NULL;
 	X509       *ca_cert = NULL;
 	char       *data = NULL;
@@ -781,7 +780,7 @@ openssl_csr_to_crt(PG_FUNCTION_ARGS)
 		ca_cert_file_path = PG_GETARG_TEXT_PP(1);
 		if (!validate_path_within_datadir(text_to_cstring(ca_cert_file_path)))
 		{
-			err = "PATH_NOT_IN_PGDATA-2";
+			err = "PATH_NOT_IN_PGDATA";
 			goto out;
 		}
 
@@ -808,7 +807,7 @@ openssl_csr_to_crt(PG_FUNCTION_ARGS)
 	ca_key_file_path = PG_GETARG_TEXT_PP(2);
 	if (!PG_ARGISNULL(2) && !validate_path_within_datadir(text_to_cstring(ca_key_file_path)))
 	{
-		snprintf(errBuffer, sizeof(errBuffer), "PATH_NOT_IN_PGDATA-3: - DataDir: %s - path: %s", DataDir, text_to_cstring(ca_key_file_path));
+		err = "PATH_NOT_IN_PGDATA";
 		goto out;
 	}
 
@@ -1016,8 +1015,6 @@ out:
 		X509_EXTENSION_free(extension);
 	if (serial_no != NULL)
 		ASN1_INTEGER_free(serial_no);
-	if (errBuffer[0] != 0)
-		report_openssl_error(errBuffer);
 	if (err != NULL)
 		report_openssl_error(err);
 	if (bio_cert_file != NULL)
@@ -1056,6 +1053,11 @@ openssl_rsa_generate_crl(PG_FUNCTION_ARGS)
 	if (!PG_ARGISNULL(0))
 	{
 		ca_cert_file_path = PG_GETARG_TEXT_PP(0);
+		if (!validate_path_within_datadir(text_to_cstring(ca_cert_file_path)))
+		{
+			err = "PATH_NOT_IN_PGDATA";
+			goto out;
+		}
 
 		/* Get the CA crl */
 		bio_cert_file = BIO_new_file(text_to_cstring(ca_cert_file_path), "r");
@@ -1078,6 +1080,11 @@ openssl_rsa_generate_crl(PG_FUNCTION_ARGS)
 		goto out;
 	}
 	ca_key_file_path = PG_GETARG_TEXT_PP(1);
+	if (!validate_path_within_datadir(text_to_cstring(ca_key_file_path)))
+	{
+		err = "PATH_NOT_IN_PGDATA";
+		goto out;
+	}
 
 	/* Get the CA private key */
 	bio_key = BIO_new_file(text_to_cstring(ca_key_file_path), "r");
@@ -1231,6 +1238,12 @@ openssl_is_crt_expire_on(PG_FUNCTION_ARGS)
 	}
 
 	cert_file_path = PG_GETARG_TEXT_PP(0);
+	if (!validate_path_within_datadir(text_to_cstring(cert_file_path)))
+	{
+		err = "PATH_NOT_IN_PGDATA";
+		goto out;
+	}
+
 	fp_cert_file = fopen(text_to_cstring(cert_file_path), "r");
 	if (!fp_cert_file)
 	{
@@ -1650,7 +1663,7 @@ openssl_get_crt_expiry_date(PG_FUNCTION_ARGS)
 	cert_file_path = PG_GETARG_TEXT_PP(0);
 	if (!validate_path_within_datadir(text_to_cstring(cert_file_path)))
 	{
-		err = "PATH_NOT_IN_PGDATA-1";
+		err = "PATH_NOT_IN_PGDATA";
 		goto out;
 	}
 
