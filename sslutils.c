@@ -1416,6 +1416,9 @@ openssl_revoke_certificate(PG_FUNCTION_ARGS)
 	}
 	if (!validate_path_within_allowed_guc(revoke_crl_output_dir, c_crl_filename))
 	{
+		char errBuffer[512] = {0};
+		snprintf (errBuffer, sizeof(errBuffer), "GUC: %s; path: %s\n", revoke_crl_output_dir, c_crl_filename);
+		report_openssl_error(errBuffer);
 		err = "ERROR: CRL file path not in sslutils.revoke_certificate_crl_paths";
 		goto out;
 	}
