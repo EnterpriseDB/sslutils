@@ -174,6 +174,8 @@ static bool validate_path_within_dedicated_dir(const char *path, char *dedicated
 	if (!realpath(path, resolved) || !realpath(dedicated_dir, datadir_resolved))
 		return false;
 
+	fprintf(stdout, "Validating %s to %s\n", resolved, datadir_resolved);
+	fflush(stdout);
 	return strncmp(resolved, datadir_resolved, strlen(datadir_resolved)) == 0;
 }
 
