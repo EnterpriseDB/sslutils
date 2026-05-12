@@ -126,7 +126,7 @@ void
 _PG_init(void)
 {
 	DefineCustomStringVariable(
-		"sslutils.revoke_certificate.crl_paths",	// Parameter name
+		"sslutils.revoke_certificate_crl_paths",	// Parameter name
 		"Directory to store allowed revoke CRL dirs.",	// Short description
 		NULL,						// Long description
 		&revoke_crl_output_dir,				// Pointer to our C-string
@@ -1408,15 +1408,15 @@ openssl_revoke_certificate(PG_FUNCTION_ARGS)
 
 	c_crl_filename  = text_to_cstring(t_crl_filename);
 
-	// To be safe, the CRL file need be under the paths configured in sslutils.revoke_certificate.crl_paths
+	// To be safe, the CRL file need be under the paths configured in sslutils.revoke_certificate_crl_paths
 	if (!revoke_crl_output_dir)
 	{
-		err = "ERROR: sslutils.revoke_certificate.crl_paths not configured";
+		err = "ERROR: sslutils.revoke_certificate_crl_paths not configured";
 		goto out;
 	}
 	if (!validate_path_within_allowed_guc(revoke_crl_output_dir, c_crl_filename))
 	{
-		err = "ERROR: CRL file path not in sslutils.revoke_certificate.crl_paths";
+		err = "ERROR: CRL file path not in sslutils.revoke_certificate_crl_paths";
 		goto out;
 	}
 
