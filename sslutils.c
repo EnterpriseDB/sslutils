@@ -32,6 +32,7 @@
 #include "fmgr.h"
 #include "utils/builtins.h"
 #include "utils/datetime.h"
+#include "utils/guc.h"
 #include "utils/varlena.h"
 
 // Start from PG-16, VARDATA_ANY was moved from postgres.h to varatt.h
@@ -150,7 +151,7 @@ static char* string_sep(char **stringp, const char *delim)
 /*
  * This function is to restrict all file access to be under dedicated directory, like PGDATA
  */
-static bool validate_path_within_dedicated_dir(const char *path, dedicated_dir)
+static bool validate_path_within_dedicated_dir(const char *path, char *dedicated_dir)
 {
 	char resolved[PATH_MAX], datadir_resolved[PATH_MAX];
 	if (!realpath(path, resolved) || !realpath(dedicated_dir, datadir_resolved))
