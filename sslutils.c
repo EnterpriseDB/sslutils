@@ -174,8 +174,6 @@ static bool validate_path_within_dedicated_dir(const char *path, char *dedicated
 	if (!realpath(path, resolved) || !realpath(dedicated_dir, datadir_resolved))
 		return false;
 
-	fprintf(stdout, "Validating %s to %s\n", resolved, datadir_resolved);
-	fflush(stdout);
 	return strncmp(resolved, datadir_resolved, strlen(datadir_resolved)) == 0;
 }
 
@@ -1339,9 +1337,7 @@ static bool validate_path_within_allowed_guc(char* guc_string, const char* targe
 	foreach(l, elemlist)
 	{
 		char* dir = (char*) lfirst(l);
-		fprintf(stdout, "Comparing %s to %s\n", target, dir);
-		fflush(stdout);
-		if (validate_path_within_dedicated_dir(target, dir))
+		if (strncmp(target, dir, strlen(dir)) == 0)
 		{
 			pfree(rawstring);
 			list_free(elemlist);
@@ -1420,9 +1416,6 @@ openssl_revoke_certificate(PG_FUNCTION_ARGS)
 	}
 	if (!validate_path_within_allowed_guc(revoke_crl_output_dir, c_crl_filename))
 	{
-		char errBuffer[512] = {0};
-		snprintf (errBuffer, sizeof(errBuffer), "GUC: %s; path: %s\n", revoke_crl_output_dir, c_crl_filename);
-		report_openssl_error(errBuffer);
 		err = "ERROR: CRL file path not in sslutils.revoke_certificate_crl_paths";
 		goto out;
 	}
