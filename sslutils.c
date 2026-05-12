@@ -167,6 +167,7 @@ static char* string_sep(char **stringp, const char *delim)
 
 /*
  * This function is to restrict all file access to be under dedicated directory, like PGDATA
+ * Note: path need be an valid file, otherwise realpath() will return false directly.
  */
 static bool validate_path_within_dedicated_dir(const char *path, char *dedicated_dir)
 {
