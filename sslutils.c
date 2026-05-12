@@ -18,6 +18,7 @@
  */
 
 #include "postgres.h"
+#include "miscadmin.h"
 
 #include <openssl/err.h>
 #include <openssl/pem.h>
@@ -146,6 +147,18 @@ static char* string_sep(char **stringp, const char *delim)
 }
 
 /*
+ * This function is to restrict all file access to be under $PGDATA
+ */
+static bool validate_path_within_datadir(const char *path)
+{
+	char resolved[PATH_MAX], datadir_resolved[PATH_MAX];
+	if (!realpath(path, resolved) || !realpath(DataDir, datadir_resolved))
+		return false;
+
+	return strncmp(resolved, datadir_resolved, strlen(datadir_resolved)) == 0;
+}
+
+/*
  * This function make certificate revocation string.
  */
 static char* make_revocation_str()
@@ -175,7 +188,7 @@ static char* make_revocation_str()
 /*
  * This function revoke client certificate and add entry in database file.
  */
-static int revoke(const char* dbfile, X509* x)
+static int revoke_client_certificate(const char* dbfile, X509* x)
 {
 	int i;
 	const ASN1_UTCTIME* tm = NULL;
@@ -765,6 +778,11 @@ openssl_csr_to_crt(PG_FUNCTION_ARGS)
 	if (!PG_ARGISNULL(1))
 	{
 		ca_cert_file_path = PG_GETARG_TEXT_PP(1);
+		if (!validate_path_within_datadir(text_to_cstring(ca_cert_file_path)))
+		{
+			err = "PATH_NOT_IN_PGDATA";
+			goto out;
+		}
 
 		/* Get the CA certificate */
 		bio_cert_file = BIO_new_file(text_to_cstring(ca_cert_file_path), "r");
@@ -787,6 +805,11 @@ openssl_csr_to_crt(PG_FUNCTION_ARGS)
 		goto out;
 	}
 	ca_key_file_path = PG_GETARG_TEXT_PP(2);
+	if (!validate_path_within_datadir(text_to_cstring(ca_key_file_path)))
+	{
+		err = "PATH_NOT_IN_PGDATA";
+		goto out;
+	}
 
 	/* Get the CA private key */
 	bio_key = BIO_new_file(text_to_cstring(ca_key_file_path), "r");
@@ -1030,6 +1053,11 @@ openssl_rsa_generate_crl(PG_FUNCTION_ARGS)
 	if (!PG_ARGISNULL(0))
 	{
 		ca_cert_file_path = PG_GETARG_TEXT_PP(0);
+		if (!validate_path_within_datadir(text_to_cstring(ca_cert_file_path)))
+		{
+			err = "PATH_NOT_IN_PGDATA";
+			goto out;
+		}
 
 		/* Get the CA crl */
 		bio_cert_file = BIO_new_file(text_to_cstring(ca_cert_file_path), "r");
@@ -1052,6 +1080,11 @@ openssl_rsa_generate_crl(PG_FUNCTION_ARGS)
 		goto out;
 	}
 	ca_key_file_path = PG_GETARG_TEXT_PP(1);
+	if (!validate_path_within_datadir(text_to_cstring(ca_key_file_path)))
+	{
+		err = "PATH_NOT_IN_PGDATA";
+		goto out;
+	}
 
 	/* Get the CA private key */
 	bio_key = BIO_new_file(text_to_cstring(ca_key_file_path), "r");
@@ -1205,6 +1238,12 @@ openssl_is_crt_expire_on(PG_FUNCTION_ARGS)
 	}
 
 	cert_file_path = PG_GETARG_TEXT_PP(0);
+	if (!validate_path_within_datadir(text_to_cstring(cert_file_path)))
+	{
+		err = "PATH_NOT_IN_PGDATA";
+		goto out;
+	}
+
 	fp_cert_file = fopen(text_to_cstring(cert_file_path), "r");
 	if (!fp_cert_file)
 	{
@@ -1335,7 +1374,7 @@ openssl_revoke_certificate(PG_FUNCTION_ARGS)
 	}
 
 	// First add certificate to database file index.txt which contains list of revoke certificates.
-	ret = revoke(revoke_cert_db_file, x);
+	ret = revoke_client_certificate(revoke_cert_db_file, x);
 	if (ret == -1)
 	{
 		err = "ADD_CERT_TO_DB_FILE";
@@ -1622,6 +1661,12 @@ openssl_get_crt_expiry_date(PG_FUNCTION_ARGS)
 	}
 
 	cert_file_path = PG_GETARG_TEXT_PP(0);
+	if (!validate_path_within_datadir(text_to_cstring(cert_file_path)))
+	{
+		err = "PATH_NOT_IN_PGDATA";
+		goto out;
+	}
+
 	bio_cert_file = BIO_new_file(text_to_cstring(cert_file_path), "r");
 	if (!bio_cert_file)
 	{
