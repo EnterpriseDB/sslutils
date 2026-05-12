@@ -116,10 +116,27 @@ time_t ASN1_GetTimeT(const ASN1_TIME* time);
 
 #define PEM_SSLUTILS_VERSION "1.4"
 
+/*
+ * Global variable to hold the path of allowed revoke CRL directory
+ */
+static char* revoke_crl_output_dir = NULL;
+
 /* On module load, make sure SSL error strings are available. */
 void
 _PG_init(void)
 {
+	DefineCustomStringVariable(
+		"sslutils.revoke_certificate.crl_paths",	// Parameter name
+		"Directory to store allowed revoke CRL dirs.",	// Short description
+		NULL,						// Long description
+		&revoke_crl_output_dir,				// Pointer to our C-string
+		NULL,						// Default value
+		PGC_SIGHUP,					// Context (requires reload to change)
+		0,						// Flags
+		NULL,						// Check hook
+		NULL,						// Assign hook
+		NULL						// Show hook
+	);
 }
 
 /* Report an error within OpenSSL. */
@@ -1392,13 +1409,12 @@ openssl_revoke_certificate(PG_FUNCTION_ARGS)
 	c_crl_filename  = text_to_cstring(t_crl_filename);
 
 	// To be safe, the CRL file need be under the paths configured in sslutils.revoke_certificate.crl_paths
-	const char* allowed_paths = GetConfigOptionByName("sslutils.revoke_certificate.crl_paths", NULL, false);
-	if (!allowed_paths)
+	if (!revoke_crl_output_dir)
 	{
 		err = "ERROR: sslutils.revoke_certificate.crl_paths not configured";
 		goto out;
 	}
-	if (!validate_path_within_allowed_guc(allowed_paths, c_crl_filename))
+	if (!validate_path_within_allowed_guc(revoke_crl_output_dir, c_crl_filename))
 	{
 		err = "ERROR: CRL file path not in sslutils.revoke_certificate.crl_paths";
 		goto out;
