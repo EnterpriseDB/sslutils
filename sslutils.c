@@ -1336,8 +1336,8 @@ static bool validate_path_within_allowed_guc(char* guc_string, const char* targe
 
 	foreach(l, elemlist)
 	{
-		char* name = (char*) lfirst(l);
-		if (strcmp(name, target) == 0)
+		char* dir = (char*) lfirst(l);
+		if (validate_path_within_dedicated_dir(target, dir))
 		{
 			pfree(rawstring);
 			list_free(elemlist);
