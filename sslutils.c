@@ -32,6 +32,8 @@
 #include "fmgr.h"
 #include "utils/builtins.h"
 #include "utils/datetime.h"
+#include "utils/guc.h"
+#include "utils/varlena.h"
 
 // Start from PG-16, VARDATA_ANY was moved from postgres.h to varatt.h
 #if PG_VERSION_NUM >= 160000
@@ -114,10 +116,27 @@ time_t ASN1_GetTimeT(const ASN1_TIME* time);
 
 #define PEM_SSLUTILS_VERSION "1.4"
 
+/*
+ * Global variable to hold the path of allowed revoke CRL directory
+ */
+static char* revoke_crl_output_dir = NULL;
+
 /* On module load, make sure SSL error strings are available. */
 void
 _PG_init(void)
 {
+	DefineCustomStringVariable(
+		"sslutils.revoke_certificate_crl_paths",	// Parameter name
+		"Directory to store allowed revoke CRL dirs.",	// Short description
+		NULL,						// Long description
+		&revoke_crl_output_dir,				// Pointer to our C-string
+		NULL,						// Default value
+		PGC_SIGHUP,					// Context (requires reload to change)
+		0,						// Flags
+		NULL,						// Check hook
+		NULL,						// Assign hook
+		NULL						// Show hook
+	);
 }
 
 /* Report an error within OpenSSL. */
@@ -147,15 +166,24 @@ static char* string_sep(char **stringp, const char *delim)
 }
 
 /*
- * This function is to restrict all file access to be under $PGDATA
+ * This function is to restrict all file access to be under dedicated directory, like PGDATA
+ * Note: path need be an valid file, otherwise realpath() will return false directly.
  */
-static bool validate_path_within_datadir(const char *path)
+static bool validate_path_within_dedicated_dir(const char *path, char *dedicated_dir)
 {
 	char resolved[PATH_MAX], datadir_resolved[PATH_MAX];
-	if (!realpath(path, resolved) || !realpath(DataDir, datadir_resolved))
+	if (!realpath(path, resolved) || !realpath(dedicated_dir, datadir_resolved))
 		return false;
 
 	return strncmp(resolved, datadir_resolved, strlen(datadir_resolved)) == 0;
+}
+
+/*
+ * This function is to restrict all file access to be under PGDATA
+ */
+static bool validate_path_within_datadir(const char *path)
+{
+	return validate_path_within_dedicated_dir(path, DataDir);
 }
 
 /*
@@ -1290,6 +1318,40 @@ out:
 }
 
 /*
+ * This function is to restrict all file access to be under the paths configured in GUC
+ */
+static bool validate_path_within_allowed_guc(char* guc_string, const char* target)
+{
+	char* rawstring;
+	List* elemlist;
+	ListCell* l;
+
+	rawstring = pstrdup(guc_string);
+
+	// It handles case-insensitivity and whitespace automatically
+	if (!SplitIdentifierString(rawstring, ',', &elemlist))
+	{
+		pfree(rawstring);
+		return false;
+	}
+
+	foreach(l, elemlist)
+	{
+		char* dir = (char*) lfirst(l);
+		if (strncmp(target, dir, strlen(dir)) == 0)
+		{
+			pfree(rawstring);
+			list_free(elemlist);
+			return true;
+		}
+	}
+
+	pfree(rawstring);
+	list_free(elemlist);
+	return false;
+}
+
+/*
  * Revoke the client certificate and Re-generate CRL.
  */
 Datum
@@ -1346,6 +1408,19 @@ openssl_revoke_certificate(PG_FUNCTION_ARGS)
 	t_crl_filename     = PG_GETARG_TEXT_PP(1);
 
 	c_crl_filename  = text_to_cstring(t_crl_filename);
+
+	// To be safe, the CRL file need be under the paths configured in sslutils.revoke_certificate_crl_paths
+	if (!revoke_crl_output_dir)
+	{
+		err = "ERROR: sslutils.revoke_certificate_crl_paths not configured";
+		goto out;
+	}
+	if (!validate_path_within_allowed_guc(revoke_crl_output_dir, c_crl_filename))
+	{
+		err = "ERROR: CRL file path not in sslutils.revoke_certificate_crl_paths";
+		goto out;
+	}
+
 	crl_file_len = strlen(c_crl_filename);
 
 	cert_data_size = strlen(text_to_cstring(cert_t_data)) + 1;
