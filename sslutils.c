@@ -1552,7 +1552,9 @@ openssl_revoke_certificate(PG_FUNCTION_ARGS)
 		if (line[0] != 'R')
 			continue;
 
-		memset(fields, 0, 256);
+		fprintf(stdout, "size of fields: %d\n", sizeof(fields));
+		fflush(stdout);
+		memset(fields, 0, sizeof(fields));
 		p = line;
 
 		int k = 0;
