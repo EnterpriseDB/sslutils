@@ -20,6 +20,7 @@
 #include "postgres.h"
 #include "miscadmin.h"
 #include "unistd.h"
+#include <sys/file.h>
 
 #include <openssl/err.h>
 #include <openssl/pem.h>
