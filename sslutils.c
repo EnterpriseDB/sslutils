@@ -52,7 +52,7 @@
 #define X509_CRL_set1_lastUpdate X509_CRL_set_lastUpdate
 #endif // if OPENSSL_VERSION_NUMBER < 0x10100000L
 
-#define SERIAL_RAND_BITS  64
+#define SERIAL_RAND_BITS  159
 #define DEDAULT_VALIDITY_DAYS  3650
 
 #define BUFFER_PADDING_BYTES 50
@@ -951,7 +951,7 @@ openssl_csr_to_crt(PG_FUNCTION_ARGS)
 		goto out;
 	}
 
-	if (!BN_pseudo_rand(bn, SERIAL_RAND_BITS, 0, 0))
+	if (!BN_rand(bn, SERIAL_RAND_BITS, BN_RAND_TOP_ANY, BN_RAND_BOTTOM_ANY))
 	{
 		err = "Error_generating_random_bignum";
 		goto out;
