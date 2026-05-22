@@ -1471,7 +1471,11 @@ openssl_revoke_certificate(PG_FUNCTION_ARGS)
 		goto out;
 	}
 
-	PEM_read_bio_X509(bio_ca_cert, &cacert, NULL, NULL);
+	if(!PEM_read_bio_X509(bio_ca_cert, &cacert, NULL, NULL))
+	{
+		err = "FILE_READ_CA_CERT";
+		goto out;
+	}
 	BIO_free(bio_ca_cert);
 	bio_ca_cert = NULL;
 
@@ -1490,7 +1494,11 @@ openssl_revoke_certificate(PG_FUNCTION_ARGS)
 		goto out;
 	}
 
-	PEM_read_bio_PrivateKey(bio_ca_key, &pkey, NULL, NULL);
+	if(!PEM_read_bio_PrivateKey(bio_ca_key, &pkey, NULL, NULL))
+	{
+		err = "ERROR_READ_CA_KEY";
+		goto out;
+	}
 	BIO_free(bio_ca_key);
 	bio_ca_key = NULL;
 
