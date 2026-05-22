@@ -19,7 +19,6 @@
 
 #include "postgres.h"
 #include "miscadmin.h"
-#include "unistd.h"
 #include <sys/file.h>
 
 #include <openssl/err.h>
@@ -255,15 +254,7 @@ static int revoke_client_certificate(const char* dbfile, X509* x)
 	if (flock(fileno(revoke_file), LOCK_EX | LOCK_NB) != 0)
 	{
 		if (errno == EWOULDBLOCK) {
-			fprintf(stdout, "Could not lock revocation database, it is already locked by another process.\n");
-			fflush(stdout);
-			ereport(ERROR, (errmsg("Could not lock revocation database, it is already locked by another process ---")));
-		}
-		else
-		{
-			fprintf(stdout, "Could not lock revocation database, for unknown reason.\n");
-			fflush(stdout);
-			ereport(ERROR, (errmsg("Could not lock revocation database, for unknown reason ---")));
+			ereport(ERROR, (errmsg("Could not lock revocation database, it is already locked by another process.")));
 		}
 		return -1;
 	}
@@ -329,8 +320,6 @@ static int revoke_client_certificate(const char* dbfile, X509* x)
 	}
 	fwrite("\n", 1, 1, revoke_file);
 
-	// For testing purpose
-	sleep(10);
 	fclose(revoke_file);
 	return 0;
 }
