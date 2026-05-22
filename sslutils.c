@@ -252,11 +252,19 @@ static int revoke_client_certificate(const char* dbfile, X509* x)
 	if (revoke_file == NULL)
 		return -1;
 
-	if (flock(fileno(revoke_file), LOCK_EX) != 0)
+	if (flock(fileno(revoke_file), LOCK_EX | LOCK_NB) != 0)
 	{
-		fprintf(stdout, "Could not lock revocation database, maybe it is locked by another process.\n");
-		fflush(stdout);
-		ereport(ERROR, (errmsg("Could not lock revocation database")));
+		if (errno == EWOULDBLOCK) {
+			fprintf(stdout, "Could not lock revocation database, it is already locked by another process.\n");
+			fflush(stdout);
+			ereport(ERROR, (errmsg("Could not lock revocation database, it is already locked by another process ---")));
+		}
+		else
+		{
+			fprintf(stdout, "Could not lock revocation database, for unknown reason.\n");
+			fflush(stdout);
+			ereport(ERROR, (errmsg("Could not lock revocation database, for unknown reason ---")));
+		}
 		return -1;
 	}
 
