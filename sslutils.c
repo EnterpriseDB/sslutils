@@ -1732,7 +1732,6 @@ ASN1_GetTimeT(const ASN1_TIME* time)
 	/* Note: we did not adjust the time based on time zone information */
 	return mktime(&t);
 #else
-#error "For testing purpose, to see which platforms has OpenSSL >= 1.1.0"
 	// ASN1_TIME_to_tm() is a safe API but available OpenSSL 1.1.0
 	struct tm t;
 	memset(&t, 0, sizeof(t));
