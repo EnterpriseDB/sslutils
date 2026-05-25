@@ -19,6 +19,7 @@
 
 #include "postgres.h"
 #include "miscadmin.h"
+#include <sys/file.h>
 
 #include <openssl/err.h>
 #include <openssl/pem.h>
@@ -249,6 +250,14 @@ static int revoke_client_certificate(const char* dbfile, X509* x)
 	revoke_file = fopen(dbfile, "a+");
 	if (revoke_file == NULL)
 		return -1;
+
+	if (flock(fileno(revoke_file), LOCK_EX | LOCK_NB) != 0)
+	{
+		if (errno == EWOULDBLOCK) {
+			ereport(ERROR, (errmsg("Could not lock revocation database, it is already locked by another process.")));
+		}
+		return -1;
+	}
 
 	// Lookup whether the client cert has been revoke by serial number
 	// and rotate the index.txt
