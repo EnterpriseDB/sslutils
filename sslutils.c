@@ -446,7 +446,10 @@ static int unpack_revinfo(ASN1_TIME** prevtm, int* preason, ASN1_OBJECT** phold,
 	if (pinvtm)
 		*pinvtm = comp_time;
 	else
+	{
 		ASN1_GENERALIZEDTIME_free(comp_time);
+		comp_time = NULL;
+	}
 
 	ret = 1;
 
@@ -455,8 +458,11 @@ static int unpack_revinfo(ASN1_TIME** prevtm, int* preason, ASN1_OBJECT** phold,
 		OPENSSL_free(tmp);
 	if (!phold)
 		ASN1_OBJECT_free(hold);
-	if (!pinvtm)
+	if (comp_time)
+	{
 		ASN1_GENERALIZEDTIME_free(comp_time);
+		comp_time = NULL;
+	}
 	if (errBuffer[0] != 0)
 		report_openssl_error(errBuffer);
 
