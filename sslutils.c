@@ -1702,6 +1702,7 @@ out:
 time_t
 ASN1_GetTimeT(const ASN1_TIME* time)
 {
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
 	struct tm t;
 	const char* str = (const char*)time->data;
 	size_t i = 0;
@@ -1735,6 +1736,16 @@ ASN1_GetTimeT(const ASN1_TIME* time)
 
 	/* Note: we did not adjust the time based on time zone information */
 	return mktime(&t);
+#else
+	// ASN1_TIME_to_tm() is a safe API but available since OpenSSL 1.1.0
+	struct tm t;
+	memset(&t, 0, sizeof(t));
+
+	if (!ASN1_TIME_to_tm(time, &t))
+		return (time_t)-1;   // error: malformed time field
+
+	return timegm(&t);
+#endif // if OPENSSL_VERSION_NUMBER < 0x10100000L
 }
 
 /*
