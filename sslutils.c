@@ -199,7 +199,7 @@ static bool check_read_server_file_permission()
 		ereport(ERROR,
 			(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
 			errmsg("must be a member of pg_read_server_files to use this function")));
-		retrun false;
+		return false;
 	}
 	return true;
 #endif
@@ -216,7 +216,7 @@ static bool check_write_server_file_permission()
 		ereport(ERROR,
 			(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
 			errmsg("must be a member of pg_write_server_files to use this function")));
-		retrun false;
+		return false;
 	}
 	return true;
 #endif
