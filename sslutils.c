@@ -41,6 +41,23 @@
 #include "varatt.h"
 #endif
 
+// To call functions like is_member_of_role()
+#if PG_VERSION_NUM >= 110000
+#include "utils/errcodes.h"
+#include "utils/acl.h"
+#include "catalog/pg_authid.h"
+
+// Compatibility layer for PostgreSQL < 14
+#if PG_VERSION_NUM < 140000 && defined(DEFAULT_ROLE_READ_SERVER_FILES)
+#define ROLE_PG_READ_SERVER_FILES DEFAULT_ROLE_READ_SERVER_FILES
+#endif
+#if PG_VERSION_NUM < 140000 && defined(DEFAULT_ROLE_WRITE_SERVER_FILES)
+#define ROLE_PG_WRITE_SERVER_FILES DEFAULT_ROLE_WRITE_SERVER_FILES
+#endif
+
+#endif
+
+
 /*
  * For compatibility with OpenSSL 1.0.2
  *
@@ -194,7 +211,7 @@ static bool validate_path_within_datadir(const char *path)
 static bool check_read_server_file_permission()
 {
 #if PG_VERSION_NUM >= 110000
-	if (!is_member_of_role(GetUserId(), DEFAULT_ROLE_READ_SERVER_FILES))
+	if (!is_member_of_role(GetUserId(), ROLE_PG_READ_SERVER_FILES))
 	{
 		ereport(ERROR,
 			(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
@@ -211,7 +228,7 @@ static bool check_read_server_file_permission()
 static bool check_write_server_file_permission()
 {
 #if PG_VERSION_NUM >= 110000
-	if (!is_member_of_role(GetUserId(), DEFAULT_ROLE_WRITE_SERVER_FILES))
+	if (!is_member_of_role(GetUserId(), ROLE_PG_WRITE_SERVER_FILES))
 	{
 		ereport(ERROR,
 			(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
