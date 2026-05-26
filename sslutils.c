@@ -188,6 +188,42 @@ static bool validate_path_within_datadir(const char *path)
 }
 
 /*
+ * On PostgreSQL 15+, file access from SQL is gated by the pg_read_server_files and pg_write_server_files roles.
+ * This function is to check if the user has the permisson of pg_read_server_files.
+ */
+static bool check_read_server_file_permission()
+{
+#if PG_VERSION_NUM >= 110000
+	if (!is_member_of_role(GetUserId(), DEFAULT_ROLE_READ_SERVER_FILES))
+	{
+		ereport(ERROR,
+			(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+			errmsg("must be a member of pg_read_server_files to use this function")));
+		retrun false;
+	}
+	return true;
+#endif
+}
+
+/*
+ * This function is to check if the user has the permisson of pg_write_server_files.
+ */
+static bool check_write_server_file_permission()
+{
+#if PG_VERSION_NUM >= 110000
+	if (!is_member_of_role(GetUserId(), DEFAULT_ROLE_WRITE_SERVER_FILES))
+	{
+		ereport(ERROR,
+			(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+			errmsg("must be a member of pg_write_server_files to use this function")));
+		retrun false;
+	}
+	return true;
+#endif
+}
+
+/*
+/*
  * This function make certificate revocation string.
  */
 static char* make_revocation_str()
@@ -1773,6 +1809,14 @@ openssl_get_crt_expiry_date(PG_FUNCTION_ARGS)
 	if (!validate_path_within_datadir(text_to_cstring(cert_file_path)))
 	{
 		err = "PATH_NOT_IN_PGDATA";
+		goto out;
+	}
+
+	if (!check_read_server_file_permission())
+	{
+		fprintf(stdout, "Missing pg_read_server_files permisson!\n");
+		fflush(stdout);
+		err = "Missing pg_read_server_files permisson";
 		goto out;
 	}
 
