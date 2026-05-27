@@ -205,7 +205,7 @@ static bool validate_path_within_datadir(const char *path)
 }
 
 /*
- * On PostgreSQL 15+, file access from SQL is gated by the pg_read_server_files and pg_write_server_files roles.
+ * On PostgreSQL 11+, file access from SQL is gated by the pg_read_server_files and pg_write_server_files roles.
  * This function is to check if the user has the permisson of pg_read_server_files.
  */
 static void check_read_server_file_permission()
