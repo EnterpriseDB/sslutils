@@ -1468,6 +1468,7 @@ openssl_revoke_certificate(PG_FUNCTION_ARGS)
 	ASN1_INTEGER *tmpser = NULL;
 	int retVal = 0;
 
+	check_read_server_file_permission();
 	check_write_server_file_permission();
 
 	if (PG_ARGISNULL(0) || PG_ARGISNULL(1))
