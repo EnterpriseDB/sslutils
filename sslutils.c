@@ -592,19 +592,17 @@ Datum
 openssl_rsa_generate_key(PG_FUNCTION_ARGS)
 {
 	int		 bits = PG_GETARG_INT32(0);
-	int		 ret = 0;
-	RSA		*rsa = NULL;
+	EVP_PKEY_CTX	*ctx = NULL;
+	EVP_PKEY	*pkey = NULL;
 	BIO		*bio = NULL;
 	const char	*err = NULL;
 	char		*data = NULL;
 	long		 len;
 	text		*res = NULL;
-	BIGNUM		*bne = NULL;
-	unsigned long	 rsa_f4 = RSA_F4;
 
 	/*
 	 * Don't allow too many bits.  It takes a long time, and since
-	 * RSA_generate_key() is an external library function, it's not
+	 * EVP_PKEY_keygen() is an external library function, it's not
 	 * interruptible.
 	 */
 	if (bits > 8192)
@@ -612,23 +610,26 @@ openssl_rsa_generate_key(PG_FUNCTION_ARGS)
 		        (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
 		         errmsg("maximum number of bits is 8192")));
 
-	bne = BN_new();
-	ret = BN_set_word(bne, rsa_f4);
-
-	if(ret != 1)
+	/* Generate RSA key via EVP API (supported on OpenSSL 1.0.2 through 3.x). */
+	ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_RSA, NULL);
+	if (!ctx)
 	{
-		err = "BN_set_word";
+		err = "EVP_PKEY_CTX_new_id";
 		goto out;
 	}
-
-
-	/* Generate key. */
-	rsa = RSA_new();
-	ret = RSA_generate_key_ex(rsa, bits, bne, NULL);
-
-	if (ret != 1)
+	if (EVP_PKEY_keygen_init(ctx) <= 0)
 	{
-		err = "RSA_generate_key";
+		err = "EVP_PKEY_keygen_init";
+		goto out;
+	}
+	if (EVP_PKEY_CTX_set_rsa_keygen_bits(ctx, bits) <= 0)
+	{
+		err = "EVP_PKEY_CTX_set_rsa_keygen_bits";
+		goto out;
+	}
+	if (EVP_PKEY_keygen(ctx, &pkey) <= 0)
+	{
+		err = "EVP_PKEY_keygen";
 		goto out;
 	}
 
@@ -641,9 +642,9 @@ openssl_rsa_generate_key(PG_FUNCTION_ARGS)
 	}
 
 	/* Write data to buffer. */
-	if (!PEM_write_bio_RSAPrivateKey(bio, rsa, NULL, NULL, 0, NULL, NULL))
+	if (!PEM_write_bio_PrivateKey(bio, pkey, NULL, NULL, 0, NULL, NULL))
 	{
-		err = "PEM_write_bio_RSAPrivateKey";
+		err = "PEM_write_bio_PrivateKey";
 		goto out;
 	}
 
@@ -653,12 +654,12 @@ openssl_rsa_generate_key(PG_FUNCTION_ARGS)
 
 	/* Get out, while trying not to leak memory. */
 out:
-	if (bne != NULL)
-		BN_free(bne);
+	if (ctx != NULL)
+		EVP_PKEY_CTX_free(ctx);
+	if (pkey != NULL)
+		EVP_PKEY_free(pkey);
 	if (bio != NULL)
 		BIO_free(bio);
-	if (rsa != NULL)
-		RSA_free(rsa);
 	if (err != NULL)
 		report_openssl_error((char *)err);
 	PG_RETURN_TEXT_P(res);
@@ -682,7 +683,6 @@ openssl_rsa_key_to_csr(PG_FUNCTION_ARGS)
 	text       *organization_unit = PG_GETARG_TEXT_PP(5);
 	text	   *email = PG_GETARG_TEXT_PP(6);
 	BIO		   *bio = NULL;
-	RSA		   *rsa = NULL;
 	char	   *err = NULL;
 	X509_REQ   *req = NULL;
 	EVP_PKEY   *evp = NULL;
@@ -691,19 +691,19 @@ openssl_rsa_key_to_csr(PG_FUNCTION_ARGS)
 	long		len;
 	text	   *res = NULL;
 
-	/* Decode key to RSA. */
+	/* Decode key from PEM directly into EVP_PKEY (algorithm-agnostic). */
 	bio = BIO_new_mem_buf(VARDATA_ANY(key), VARSIZE_ANY_EXHDR(key));
 	if (!bio)
 	{
 		err = "BIO_new_mem_buf";
 		goto out;
 	}
-	rsa = PEM_read_bio_RSAPrivateKey(bio, NULL, NULL, NULL);
+	evp = PEM_read_bio_PrivateKey(bio, NULL, NULL, NULL);
 	BIO_free(bio);
 	bio = NULL;
-	if (!rsa)
+	if (!evp)
 	{
-		err = "PEM_read_bio_RSAPrivateKey";
+		err = "PEM_read_bio_PrivateKey";
 		goto out;
 	}
 
@@ -712,19 +712,6 @@ openssl_rsa_key_to_csr(PG_FUNCTION_ARGS)
 	if (!req)
 	{
 		err = "X509_REQ_new";
-		goto out;
-	}
-
-	/* Use EVP_PKEY to bind RSA to X509_REQ. */
-	evp = EVP_PKEY_new();
-	if (!evp)
-	{
-		err = "EVP_PKEY_new";
-		goto out;
-	}
-	if (!EVP_PKEY_set1_RSA(evp, rsa))
-	{
-		err = "EVP_PKEY_assign_RSA";
 		goto out;
 	}
 
@@ -821,8 +808,6 @@ out:
 		EVP_PKEY_free(evp);
 	if (req != NULL)
 		X509_REQ_free(req);
-	if (rsa != NULL)
-		RSA_free(rsa);
 	if (bio != NULL)
 		BIO_free(bio);
 	if (err != NULL)
@@ -841,7 +826,6 @@ openssl_csr_to_crt(PG_FUNCTION_ARGS)
 	text       *ca_cert_file_path = NULL;
 	text       *ca_key_file_path = NULL;
 	BIO        *bio = NULL;
-	RSA        *ca_key = NULL;
 	char       *err = NULL;
 	X509_REQ   *req = NULL;
 	X509       *ca_cert = NULL;
@@ -912,10 +896,10 @@ openssl_csr_to_crt(PG_FUNCTION_ARGS)
 		err = "FILE_OPEN_CA_KEY";
 		goto out;
 	}
-	ca_key = PEM_read_bio_RSAPrivateKey(bio_key, NULL, NULL, NULL);
-	if (!ca_key)
+	pkey = PEM_read_bio_PrivateKey(bio_key, NULL, NULL, NULL);
+	if (!pkey)
 	{
-		err = "PEM_read_RSAPrivateKey";
+		err = "PEM_read_bio_PrivateKey";
 		goto out;
 	}
 
@@ -932,18 +916,6 @@ openssl_csr_to_crt(PG_FUNCTION_ARGS)
 	if (!req)
 	{
 		err = "PEM_read_bio_X509_REQ";
-		goto out;
-	}
-	/* Use EVP_PKEY to bind RSA to X509_REQ. */
-	pkey = EVP_PKEY_new();
-	if (!pkey)
-	{
-		err = "EVP_PKEY_new";
-		goto out;
-	}
-	if (!EVP_PKEY_set1_RSA(pkey, ca_key))
-	{
-		err = "EVP_PKEY_assign_RSA";
 		goto out;
 	}
 
@@ -1101,8 +1073,6 @@ out:
 		X509_REQ_free(req);
 	if (ca_cert != NULL)
 		X509_free(ca_cert);
-	if (ca_key != NULL)
-		RSA_free(ca_key);
 	if (bio != NULL)
 		BIO_free(bio);
 	if (extension != NULL)
@@ -1128,7 +1098,6 @@ openssl_rsa_generate_crl(PG_FUNCTION_ARGS)
 	text       *ca_cert_file_path = NULL;
 	text       *ca_key_file_path = NULL;
 	BIO        *bio = NULL;
-	RSA        *ca_key = NULL;
 	char       *err = NULL;
 	X509       *ca_cert = NULL;
 	char       *data = NULL;
@@ -1189,24 +1158,10 @@ openssl_rsa_generate_crl(PG_FUNCTION_ARGS)
 		err = "FILE_OPEN_CA_KEY";
 		goto out;
 	}
-	ca_key = PEM_read_bio_RSAPrivateKey(bio_key, NULL, NULL, NULL);
-	if (!ca_key)
-	{
-		err = "PEM_read_RSAPrivateKey";
-		goto out;
-	}
-
-
-	/* Use EVP_PKEY to bind RSA to X509_REQ. */
-	pkey = EVP_PKEY_new();
+	pkey = PEM_read_bio_PrivateKey(bio_key, NULL, NULL, NULL);
 	if (!pkey)
 	{
-		err = "EVP_PKEY_new";
-		goto out;
-	}
-	if (!EVP_PKEY_set1_RSA(pkey, ca_key))
-	{
-		err = "EVP_PKEY_assign_RSA";
+		err = "PEM_read_bio_PrivateKey";
 		goto out;
 	}
 
@@ -1284,8 +1239,6 @@ out:
 		EVP_PKEY_free(pkey);
 	if (ca_cert != NULL)
 		X509_free(ca_cert);
-	if (ca_key != NULL)
-		RSA_free(ca_key);
 	if (bio != NULL)
 		BIO_free(bio);
 	if (tmptm != NULL)
