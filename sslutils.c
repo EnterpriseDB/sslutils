@@ -132,7 +132,7 @@ PG_FUNCTION_INFO_V1(openssl_get_crt_expiry_date);
 
 time_t ASN1_GetTimeT(const ASN1_TIME* time);
 
-#define PEM_SSLUTILS_VERSION "1.4"
+#define PEM_SSLUTILS_VERSION "1.4.1"
 
 /*
  * Global variable to hold the path of allowed revoke CRL directory
