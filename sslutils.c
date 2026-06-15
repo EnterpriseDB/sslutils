@@ -223,7 +223,7 @@ static void check_read_server_file_permission()
 /*
  * This function is to check if the user has the permisson of pg_write_server_files.
  */
-static bool check_write_server_file_permission()
+static void check_write_server_file_permission()
 {
 #if PG_VERSION_NUM >= 110000
 	if (!is_member_of_role(GetUserId(), ROLE_PG_WRITE_SERVER_FILES))
@@ -235,7 +235,6 @@ static bool check_write_server_file_permission()
 #endif
 }
 
-/*
 /*
  * This function make certificate revocation string.
  */
