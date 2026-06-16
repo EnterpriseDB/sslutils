@@ -1020,7 +1020,11 @@ openssl_csr_to_crt(PG_FUNCTION_ARGS)
 		goto out;
 	}
 
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+	if (!BN_rand(bn, SERIAL_RAND_BITS, -1, 0))
+#else
 	if (!BN_rand(bn, SERIAL_RAND_BITS, BN_RAND_TOP_ANY, BN_RAND_BOTTOM_ANY))
+#endif
 	{
 		err = "Error_generating_random_bignum";
 		goto out;
