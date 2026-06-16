@@ -36,6 +36,11 @@
 #include "utils/guc.h"
 #include "utils/varlena.h"
 
+#ifdef WIN32
+#include <time.h>
+#define timegm _mkgmtime
+#endif
+
 // Start from PG-16, VARDATA_ANY was moved from postgres.h to varatt.h
 #if PG_VERSION_NUM >= 160000
 #include "varatt.h"
