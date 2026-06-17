@@ -36,6 +36,11 @@
 #include "utils/guc.h"
 #include "utils/varlena.h"
 
+#ifdef WIN32
+#include <time.h>
+#define timegm _mkgmtime
+#endif
+
 // Start from PG-16, VARDATA_ANY was moved from postgres.h to varatt.h
 #if PG_VERSION_NUM >= 160000
 #include "varatt.h"
@@ -189,11 +194,36 @@ static char* string_sep(char **stringp, const char *delim)
  */
 static bool validate_path_within_dedicated_dir(const char *path, char *dedicated_dir)
 {
+#ifdef WIN32
+	char resolved[MAX_PATH], datadir_resolved[MAX_PATH];
+
+	// GetFullPathNameA returns 0 on failure.
+	if (GetFullPathNameA(path, MAX_PATH, resolved, NULL) == 0 ||
+		GetFullPathNameA(dedicated_dir, MAX_PATH, datadir_resolved, NULL) == 0) {
+		return false;
+	}
+
+	size_t dir_len = strlen(datadir_resolved);
+
+	// Security fix/Edge case: Ensure datadir ends with a trailing backslash
+	// to prevent partial name matching (e.g., "C:\data" matching "C:\datadir")
+	if (dir_len > 0 && datadir_resolved[dir_len - 1] != '\\') {
+		// If there's room, add the trailing slash for an exact directory match
+		if (dir_len + 1 < MAX_PATH) {
+			strcat_s(datadir_resolved, MAX_PATH, "\\");
+			dir_len++;
+		}
+	}
+
+	// Windows paths are case-insensitive. _strnicmp compares up to 'dir_len' characters.
+	return _strnicmp(resolved, datadir_resolved, dir_len) == 0;
+#else
 	char resolved[PATH_MAX], datadir_resolved[PATH_MAX];
 	if (!realpath(path, resolved) || !realpath(dedicated_dir, datadir_resolved))
 		return false;
 
 	return strncmp(resolved, datadir_resolved, strlen(datadir_resolved)) == 0;
+#endif
 }
 
 /*
@@ -299,6 +329,7 @@ static int revoke_client_certificate(const char* dbfile, X509* x)
 	if (revoke_file == NULL)
 		return -1;
 
+#ifndef WIN32
 	if (flock(fileno(revoke_file), LOCK_EX | LOCK_NB) != 0)
 	{
 		if (errno == EWOULDBLOCK) {
@@ -306,6 +337,7 @@ static int revoke_client_certificate(const char* dbfile, X509* x)
 		}
 		return -1;
 	}
+#endif
 
 	// Lookup whether the client cert has been revoke by serial number
 	// and rotate the index.txt
@@ -988,7 +1020,11 @@ openssl_csr_to_crt(PG_FUNCTION_ARGS)
 		goto out;
 	}
 
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+	if (!BN_rand(bn, SERIAL_RAND_BITS, -1, 0))
+#else
 	if (!BN_rand(bn, SERIAL_RAND_BITS, BN_RAND_TOP_ANY, BN_RAND_BOTTOM_ANY))
+#endif
 	{
 		err = "Error_generating_random_bignum";
 		goto out;
@@ -1360,7 +1396,11 @@ static bool validate_path_within_allowed_guc(char* guc_string, const char* targe
 	foreach(l, elemlist)
 	{
 		char* dir = (char*) lfirst(l);
+#ifdef WIN32
+		if (_strnicmp(target, dir, strlen(dir)) == 0)
+#else
 		if (strncmp(target, dir, strlen(dir)) == 0)
+#endif
 		{
 			pfree(rawstring);
 			list_free(elemlist);
