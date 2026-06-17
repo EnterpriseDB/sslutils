@@ -195,18 +195,18 @@ static char* string_sep(char **stringp, const char *delim)
 static bool validate_path_within_dedicated_dir(const char *path, char *dedicated_dir)
 {
 #ifdef WIN32
-	fprintf(stdout, "Start validating if path in dedicated dir\n");
+	fprintf(stderr, "Start validating if path in dedicated dir\n");
 	char resolved[MAX_PATH], datadir_resolved[MAX_PATH];
 
-	fprintf(stdout, "Validate path: %s to %s\n", path, dedicated_dir);
+	fprintf(stderr, "Validate path: %s to %s\n", path, dedicated_dir);
 	// GetFullPathNameA returns 0 on failure.
 	if (GetFullPathNameA(path, MAX_PATH, resolved, NULL) == 0 ||
 		GetFullPathNameA(dedicated_dir, MAX_PATH, datadir_resolved, NULL) == 0) {
-		fprintf(stdout, "GetFullPathNameA got failure");
-		fflush(stdout);
+		fprintf(stderr, "GetFullPathNameA got failure");
+		fflush(stderr);
 		return false;
 	}
-	fprintf(stdout, "Resolved path: %s to %s\n", resolved, datadir_resolved);
+	fprintf(stderr, "Resolved path: %s to %s\n", resolved, datadir_resolved);
 
 	size_t dir_len = strlen(datadir_resolved);
 
@@ -220,9 +220,9 @@ static bool validate_path_within_dedicated_dir(const char *path, char *dedicated
 		}
 	}
 
-	fprintf(stdout, "Refined path: %s to %s\n", resolved, datadir_resolved);
-	fprintf(stdout, "Compare length: %d\n", dir_len);
-	fflush(stdout);
+	fprintf(stderr, "Refined path: %s to %s\n", resolved, datadir_resolved);
+	fprintf(stderr, "Compare length: %d\n", dir_len);
+	fflush(stderr);
 
 	// Windows paths are case-insensitive. _strnicmp compares up to 'dir_len' characters.
 	return _strnicmp(resolved, datadir_resolved, dir_len) == 0;
@@ -1393,8 +1393,8 @@ static bool validate_path_within_allowed_guc(char* guc_string, const char* targe
 	List* elemlist;
 	ListCell* l;
 
-	fprintf(stdout, "Start validating if target in GUC configured dir\n");
-	fprintf(stdout, "validate path: %s to %s\n", target, guc_string);
+	fprintf(stderr, "Start validating if target in GUC configured dir\n");
+	fprintf(stderr, "validate path: %s to %s\n", target, guc_string);
 
 	rawstring = pstrdup(guc_string);
 
@@ -1402,26 +1402,27 @@ static bool validate_path_within_allowed_guc(char* guc_string, const char* targe
 	if (!SplitIdentifierString(rawstring, ',', &elemlist))
 	{
 		pfree(rawstring);
+		fflush(stderr);
 		return false;
 	}
 
 	foreach(l, elemlist)
 	{
 		char* dir = (char*) lfirst(l);
-		fprintf(stdout, "comparing path: %s to %s\n", target, dir);
+		fprintf(stderr, "comparing path: %s to %s\n", target, dir);
 		if (strncmp(target, dir, strlen(dir)) == 0)
 		{
 			pfree(rawstring);
 			list_free(elemlist);
-			fprintf(stdout, "Matched!\n");
-			fflush(stdout);
+			fprintf(stderr, "Matched!\n");
+			fflush(stderr);
 			return true;
 		}
 	}
 
 	pfree(rawstring);
 	list_free(elemlist);
-	fflush(stdout);
+	fflush(stderr);
 	return false;
 }
 
