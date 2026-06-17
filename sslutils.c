@@ -1408,7 +1408,11 @@ static bool validate_path_within_allowed_guc(char* guc_string, const char* targe
 	{
 		char* dir = (char*) lfirst(l);
 		elog(LOG, "comparing path: %s to %s\n", target, dir);
+#ifdef WIN32
+		if (_strnicmp(target, dir, strlen(dir)) == 0)
+#else
 		if (strncmp(target, dir, strlen(dir)) == 0)
+#endif
 		{
 			pfree(rawstring);
 			list_free(elemlist);
