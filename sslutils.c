@@ -35,7 +35,6 @@
 #include "utils/datetime.h"
 #include "utils/guc.h"
 #include "utils/varlena.h"
-#include "utils/elog.h"
 
 #ifdef WIN32
 #include <time.h>
@@ -196,17 +195,13 @@ static char* string_sep(char **stringp, const char *delim)
 static bool validate_path_within_dedicated_dir(const char *path, char *dedicated_dir)
 {
 #ifdef WIN32
-	elog(LOG, "Start validating if path in dedicated dir\n");
 	char resolved[MAX_PATH], datadir_resolved[MAX_PATH];
 
-	elog(LOG, "Validate path: %s to %s\n", path, dedicated_dir);
 	// GetFullPathNameA returns 0 on failure.
 	if (GetFullPathNameA(path, MAX_PATH, resolved, NULL) == 0 ||
 		GetFullPathNameA(dedicated_dir, MAX_PATH, datadir_resolved, NULL) == 0) {
-		elog(LOG, "GetFullPathNameA got failure");
 		return false;
 	}
-	elog(LOG, "Resolved path: %s to %s\n", resolved, datadir_resolved);
 
 	size_t dir_len = strlen(datadir_resolved);
 
@@ -219,9 +214,6 @@ static bool validate_path_within_dedicated_dir(const char *path, char *dedicated
 			dir_len++;
 		}
 	}
-
-	elog(LOG, "Refined path: %s to %s\n", resolved, datadir_resolved);
-	elog(LOG, "Compare length: %d\n", dir_len);
 
 	// Windows paths are case-insensitive. _strnicmp compares up to 'dir_len' characters.
 	return _strnicmp(resolved, datadir_resolved, dir_len) == 0;
@@ -1392,9 +1384,6 @@ static bool validate_path_within_allowed_guc(char* guc_string, const char* targe
 	List* elemlist;
 	ListCell* l;
 
-	elog(LOG, "Start validating if target in GUC configured dir\n");
-	elog(LOG, "validate path: %s to %s\n", target, guc_string);
-
 	rawstring = pstrdup(guc_string);
 
 	// It handles case-insensitivity and whitespace automatically
@@ -1407,7 +1396,6 @@ static bool validate_path_within_allowed_guc(char* guc_string, const char* targe
 	foreach(l, elemlist)
 	{
 		char* dir = (char*) lfirst(l);
-		elog(LOG, "comparing path: %s to %s\n", target, dir);
 #ifdef WIN32
 		if (_strnicmp(target, dir, strlen(dir)) == 0)
 #else
@@ -1416,7 +1404,6 @@ static bool validate_path_within_allowed_guc(char* guc_string, const char* targe
 		{
 			pfree(rawstring);
 			list_free(elemlist);
-			elog(LOG, "Matched!\n");
 			return true;
 		}
 	}
