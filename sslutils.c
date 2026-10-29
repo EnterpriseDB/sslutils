@@ -882,6 +882,8 @@ openssl_csr_to_crt(PG_FUNCTION_ARGS)
 		goto out;
 	}
 	csr = PG_GETARG_TEXT_PP(0);
+	check_read_server_file_permission();
+
 	if (!PG_ARGISNULL(1))
 	{
 		ca_cert_file_path = PG_GETARG_TEXT_PP(1);
@@ -890,8 +892,6 @@ openssl_csr_to_crt(PG_FUNCTION_ARGS)
 			err = "PATH_NOT_IN_PGDATA";
 			goto out;
 		}
-
-		check_read_server_file_permission();
 
 		/* Get the CA certificate */
 		bio_cert_file = BIO_new_file(text_to_cstring(ca_cert_file_path), "r");
@@ -1148,6 +1148,8 @@ openssl_rsa_generate_crl(PG_FUNCTION_ARGS)
 	ASN1_TIME      *tmptm = NULL;
 	X509_NAME      *xn = NULL;
 
+	check_read_server_file_permission();
+
 	if (!PG_ARGISNULL(0))
 	{
 		ca_cert_file_path = PG_GETARG_TEXT_PP(0);
@@ -1156,8 +1158,6 @@ openssl_rsa_generate_crl(PG_FUNCTION_ARGS)
 			err = "PATH_NOT_IN_PGDATA";
 			goto out;
 		}
-
-		check_read_server_file_permission();
 
 		/* Get the CA crl */
 		bio_cert_file = BIO_new_file(text_to_cstring(ca_cert_file_path), "r");
