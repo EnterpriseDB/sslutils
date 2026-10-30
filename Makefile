@@ -1,10 +1,12 @@
 MODULE_big = sslutils
 OBJS = sslutils.o
-DATA_built = sslutils.sql uninstall_sslutils.sql
-DATA = sslutils--1.4.1.sql sslutils--1.4.sql sslutils--1.3.sql sslutils--1.2.sql sslutils--1.1.sql sslutils--unpackaged--1.0.sql sslutils--1.0--1.1.sql sslutils--1.1--1.2.sql sslutils--1.2--1.3.sql sslutils--1.3--1.4.sql sslutils--1.0--1.3.sql sslutils--1.1--1.3.sql sslutils--1.4--1.4.1.sql sslutils--unpackaged--1.4.1.sql
+DATA_built = sslutils.sql uninstall_sslutils.sql sslutils-pemagent.sql
+DATA = sslutils--1.4.2.sql sslutils--1.4.1--1.4.2.sql
+DATA += sslutils--1.4.1.sql sslutils--1.4.sql sslutils--1.3.sql sslutils--1.2.sql sslutils--1.1.sql sslutils--unpackaged--1.0.sql sslutils--1.0--1.1.sql sslutils--1.1--1.2.sql sslutils--1.2--1.3.sql sslutils--1.3--1.4.sql sslutils--1.0--1.3.sql sslutils--1.1--1.3.sql sslutils--1.4--1.4.1.sql sslutils--unpackaged--1.4.1.sql
 SHLIB_LINK += -lcrypto -lssl
 
 EXTENSION = sslutils
+TAP_TESTS = 1
 
 ifndef USE_PGXS
 top_builddir = ../..
@@ -29,3 +31,6 @@ LIBS := $(filter-out -lxml2, $(LIBS))
 LIBS := $(filter-out -lxslt, $(LIBS))
 LIBS := $(filter-out -lkrb5, $(LIBS))
 
+sslutils.sql: sslutils.sql.in sslutils--1.4.1--1.4.2.sql
+	cat $^ > $@
+	printf '\nCOMMIT;\n' >> $@

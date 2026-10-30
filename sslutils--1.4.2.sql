@@ -1,0 +1,134 @@
+CREATE OR REPLACE FUNCTION sslutils_version()
+RETURNS text
+AS 'MODULE_PATHNAME', 'sslutils_version'
+LANGUAGE C IMMUTABLE;
+COMMENT ON FUNCTION sslutils_version() IS 'Returns the current version of sslutils';
+
+CREATE OR REPLACE FUNCTION openssl_rsa_generate_key(integer)
+RETURNS text
+AS 'MODULE_PATHNAME', 'openssl_rsa_generate_key'
+LANGUAGE C VOLATILE STRICT SECURITY DEFINER
+SET search_path = pg_catalog, pg_temp;
+COMMENT ON FUNCTION openssl_rsa_generate_key(integer) IS 'Generates the RSA Private Key.
+-- Parameter:
+-- param1 : Number of bits.';
+
+CREATE OR REPLACE FUNCTION openssl_rsa_key_to_csr(text, text, text, text, text, text, text)
+RETURNS text
+AS 'MODULE_PATHNAME', 'openssl_rsa_key_to_csr'
+LANGUAGE C VOLATILE STRICT SECURITY DEFINER
+SET search_path = pg_catalog, pg_temp;
+COMMENT ON FUNCTION openssl_rsa_key_to_csr(text, text, text, text, text, text, text) IS 'Generates the Certificate Signing Request (CSR).
+-- Parameters:
+-- param1 : rsa key
+-- param2 : CN or common name e.g. agentN
+-- param3 : C or Country
+-- param4 : ST or State
+-- param5 : L or Location (City)
+-- param6 : OU or Organization Unit
+-- param7 : email.';
+
+CREATE OR REPLACE FUNCTION openssl_csr_to_crt(text, text, text, integer DEFAULT NULL)
+RETURNS text
+AS 'MODULE_PATHNAME', 'openssl_csr_to_crt'
+LANGUAGE C VOLATILE SECURITY DEFINER
+SET search_path = pg_catalog, pg_temp;
+COMMENT ON FUNCTION openssl_csr_to_crt(text, text, text, integer) IS 'Generates the CA/self signed certificate.
+-- Parameters:
+-- param1 : csr or certificate signing request
+-- param2 : Path to CA certificate OR NULL If CA self signed certificate is required.
+-- param3 : Path to CA private key OR Path to self private key, If param2 is NULL.
+-- param4 : The validity (in days) for the generated certificate.';
+
+CREATE OR REPLACE FUNCTION openssl_rsa_generate_crl(text, text, integer DEFAULT NULL)
+RETURNS text
+AS 'MODULE_PATHNAME', 'openssl_rsa_generate_crl'
+LANGUAGE C VOLATILE SECURITY DEFINER
+SET search_path = pg_catalog, pg_temp;
+COMMENT ON FUNCTION openssl_rsa_generate_crl(text, text, integer) IS 'Generates the Certificate Revocation List (CRL).
+-- Parameters:
+-- param1 : Path to CA certificate.
+-- param2 : Path to CA private key.
+-- param3 : The validity (in days) for the generated CRL.';
+
+CREATE OR REPLACE FUNCTION openssl_is_crt_expire_on(text, timestamptz)
+RETURNS integer
+AS 'MODULE_PATHNAME', 'openssl_is_crt_expire_on'
+LANGUAGE C VOLATILE SECURITY DEFINER
+SET search_path = pg_catalog, pg_temp;
+COMMENT ON FUNCTION openssl_is_crt_expire_on(text, timestamptz) IS 'Compare certificate expiry on given time.
+-- Parameters:
+-- param1 : Path to certificate.
+-- param2 : time to compare with end date';
+
+CREATE OR REPLACE FUNCTION openssl_revoke_certificate(text, text, integer DEFAULT NULL)
+RETURNS text
+AS 'MODULE_PATHNAME', 'openssl_revoke_certificate'
+LANGUAGE C VOLATILE SECURITY DEFINER
+SET search_path = pg_catalog, pg_temp;
+COMMENT ON FUNCTION openssl_revoke_certificate(text, text, integer) IS 'Revoke Certificate and add to Certificate Revocation List (CRL).
+-- Parameters:
+-- param1 : Path to client certificate to be revoked.
+-- param2 : CRL file name specified in postgres config file.
+-- param3 : The validity (in days) for the revoked certificate.';
+
+CREATE OR REPLACE FUNCTION openssl_get_crt_expiry_date(text)
+RETURNS timestamptz
+AS 'MODULE_PATHNAME', 'openssl_get_crt_expiry_date'
+LANGUAGE C VOLATILE SECURITY DEFINER
+SET search_path = pg_catalog, pg_temp;
+COMMENT ON FUNCTION openssl_get_crt_expiry_date(text) IS 'Return the expiry date of the given certificate.
+-- Parameters:
+-- param1 : Path to certificate.';
+
+DO $sslutils$
+DECLARE
+    owner_role pg_catalog.pg_roles%ROWTYPE;
+    signature text;
+BEGIN
+    SELECT * INTO owner_role FROM pg_catalog.pg_roles
+        WHERE rolname = 'sslutils_owner';
+    IF NOT FOUND THEN
+        CREATE ROLE sslutils_owner NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE
+            INHERIT NOREPLICATION;
+    ELSE
+        IF owner_role.rolcanlogin OR owner_role.rolsuper
+            OR owner_role.rolcreatedb OR owner_role.rolcreaterole
+            OR owner_role.rolreplication OR owner_role.rolbypassrls
+            OR NOT owner_role.rolinherit
+            OR EXISTS (SELECT FROM pg_catalog.pg_auth_members
+                       WHERE roleid = owner_role.oid)
+            OR EXISTS (SELECT FROM pg_catalog.pg_auth_members AS membership
+                       JOIN pg_catalog.pg_roles AS granted
+                         ON granted.oid = membership.roleid
+                       WHERE membership.member = owner_role.oid
+                         AND granted.rolname NOT IN
+                             ('pg_read_server_files', 'pg_write_server_files')) THEN
+            RAISE EXCEPTION 'sslutils_owner must be an INHERIT, nonadministrative NOLOGIN role with no members and only file-role memberships';
+        END IF;
+    END IF;
+
+    IF pg_catalog.current_setting('server_version_num')::integer >= 110000 THEN
+        GRANT pg_read_server_files, pg_write_server_files TO sslutils_owner;
+    END IF;
+
+    FOREACH signature IN ARRAY ARRAY[
+        'openssl_rsa_generate_key(integer)',
+        'openssl_rsa_key_to_csr(text,text,text,text,text,text,text)',
+        'openssl_csr_to_crt(text,text,text,integer)',
+        'openssl_rsa_generate_crl(text,text,integer)',
+        'openssl_is_crt_expire_on(text,timestamptz)',
+        'openssl_revoke_certificate(text,text,integer)',
+        'openssl_get_crt_expiry_date(text)'
+    ]
+    LOOP
+        EXECUTE 'ALTER FUNCTION ' || signature ||
+            ' SECURITY DEFINER VOLATILE SET search_path = pg_catalog, pg_temp';
+        EXECUTE 'REVOKE ALL ON FUNCTION ' || signature || ' FROM PUBLIC';
+        EXECUTE 'ALTER FUNCTION ' || signature || ' OWNER TO sslutils_owner';
+        IF EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'pem_agent') THEN
+            EXECUTE 'GRANT EXECUTE ON FUNCTION ' || signature || ' TO pem_agent';
+        END IF;
+    END LOOP;
+END
+$sslutils$;
