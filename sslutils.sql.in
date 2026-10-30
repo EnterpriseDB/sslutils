@@ -9,7 +9,8 @@ COMMENT ON FUNCTION sslutils_version() IS 'Returns the current version of ssluti
 CREATE OR REPLACE FUNCTION openssl_rsa_generate_key(integer)
 RETURNS text
 AS '$libdir/sslutils', 'openssl_rsa_generate_key'
-LANGUAGE C IMMUTABLE STRICT;
+LANGUAGE C VOLATILE STRICT SECURITY DEFINER
+SET search_path = pg_catalog, pg_temp;
 COMMENT ON FUNCTION  openssl_rsa_generate_key(integer) IS 'Generates the RSA Private Key.
 -- Parameter:
 -- param1 : Number of bits.';
@@ -17,7 +18,8 @@ COMMENT ON FUNCTION  openssl_rsa_generate_key(integer) IS 'Generates the RSA Pri
 CREATE OR REPLACE FUNCTION openssl_rsa_key_to_csr(text, text, text, text, text, text, text)
 RETURNS text
 AS '$libdir/sslutils', 'openssl_rsa_key_to_csr'
-LANGUAGE C IMMUTABLE STRICT;
+LANGUAGE C VOLATILE STRICT SECURITY DEFINER
+SET search_path = pg_catalog, pg_temp;
 COMMENT ON FUNCTION openssl_rsa_key_to_csr(text, text, text, text, text, text, text) IS 'Generates the Certificate Signing Request (CSR).
 -- Parameters:
 -- param1 : rsa key
@@ -31,7 +33,8 @@ COMMENT ON FUNCTION openssl_rsa_key_to_csr(text, text, text, text, text, text, t
 CREATE OR REPLACE FUNCTION openssl_csr_to_crt(text, text, text, integer DEFAULT NULL)
 RETURNS text
 AS '$libdir/sslutils', 'openssl_csr_to_crt'
-LANGUAGE C IMMUTABLE;
+LANGUAGE C VOLATILE SECURITY DEFINER
+SET search_path = pg_catalog, pg_temp;
 COMMENT ON FUNCTION openssl_csr_to_crt(text, text, text, integer) IS 'Generates the CA/self signed certificate.
 -- Parameters:
 -- param1 : csr or certificate signing request 
@@ -42,7 +45,8 @@ COMMENT ON FUNCTION openssl_csr_to_crt(text, text, text, integer) IS 'Generates 
 CREATE OR REPLACE FUNCTION openssl_rsa_generate_crl(text, text, integer DEFAULT NULL)
 RETURNS text
 AS '$libdir/sslutils', 'openssl_rsa_generate_crl'
-LANGUAGE C IMMUTABLE;
+LANGUAGE C VOLATILE SECURITY DEFINER
+SET search_path = pg_catalog, pg_temp;
 COMMENT ON FUNCTION openssl_rsa_generate_crl(text, text, integer) IS 'Generates the Certificate Revocation List (CRL).
 -- Parameters:
 -- param1 : Path to CA certificate.
@@ -52,7 +56,8 @@ COMMENT ON FUNCTION openssl_rsa_generate_crl(text, text, integer) IS 'Generates 
 CREATE OR REPLACE FUNCTION openssl_is_crt_expire_on(text, timestamptz)
 RETURNS integer
 AS '$libdir/sslutils', 'openssl_is_crt_expire_on'
-LANGUAGE C IMMUTABLE;
+LANGUAGE C VOLATILE SECURITY DEFINER
+SET search_path = pg_catalog, pg_temp;
 COMMENT ON FUNCTION openssl_is_crt_expire_on(text, timestamptz) IS 'Compare certificate expiry on given time.
 -- Parameters:
 -- param1 : Path to certificate.
@@ -61,7 +66,8 @@ COMMENT ON FUNCTION openssl_is_crt_expire_on(text, timestamptz) IS 'Compare cert
 CREATE OR REPLACE FUNCTION openssl_revoke_certificate(text, text, integer DEFAULT NULL)
 RETURNS text
 AS '$libdir/sslutils', 'openssl_revoke_certificate'
-LANGUAGE C IMMUTABLE;
+LANGUAGE C VOLATILE SECURITY DEFINER
+SET search_path = pg_catalog, pg_temp;
 COMMENT ON FUNCTION openssl_revoke_certificate(text, text, integer) IS 'Revoke Certificate and add to Certificate Revocation List (CRL).
 -- Parameters:
 -- param1 : Path to client certificate to be revoked.
@@ -71,7 +77,8 @@ COMMENT ON FUNCTION openssl_revoke_certificate(text, text, integer) IS 'Revoke C
 CREATE OR REPLACE FUNCTION openssl_get_crt_expiry_date(text)
 RETURNS timestamptz
 AS '$libdir/sslutils', 'openssl_get_crt_expiry_date'
-LANGUAGE C IMMUTABLE;
+LANGUAGE C VOLATILE SECURITY DEFINER
+SET search_path = pg_catalog, pg_temp;
 COMMENT ON FUNCTION openssl_get_crt_expiry_date(text) IS 'Return the expiry date of the given certificate.
 -- Parameters:
 -- param1 : Path to certificate.';
