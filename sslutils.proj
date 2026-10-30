@@ -107,8 +107,7 @@
 
   <Target Name="sslutils-sql">
     <Message Text="Creating sslutils.sql" />
-    <Exec Command="copy /B /Y sslutils.sql.in+sslutils--1.4.1--1.4.2.sql sslutils.sql"/>
-    <Exec Command="echo COMMIT; &gt;&gt; sslutils.sql"/>
+    <Exec Command="copy /Y sslutils.sql.in sslutils.sql"/>
     <Message Text="Creating uninstall_sslutils.sql" />
     <Exec Command="copy /Y uninstall_sslutils.sql.in uninstall_sslutils.sql"/>
   </Target>

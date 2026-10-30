@@ -30,7 +30,3 @@ endif
 LIBS := $(filter-out -lxml2, $(LIBS))
 LIBS := $(filter-out -lxslt, $(LIBS))
 LIBS := $(filter-out -lkrb5, $(LIBS))
-
-sslutils.sql: sslutils.sql.in sslutils--1.4.1--1.4.2.sql
-	cat $^ > $@
-	printf '\nCOMMIT;\n' >> $@
