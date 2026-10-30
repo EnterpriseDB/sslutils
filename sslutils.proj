@@ -109,14 +109,13 @@
     <Message Text="Creating sslutils.sql" />
     <Exec Command="copy /B /Y sslutils.sql.in+sslutils--1.4.1--1.4.2.sql sslutils.sql"/>
     <Exec Command="echo COMMIT; &gt;&gt; sslutils.sql"/>
-    <Exec Command="copy /Y sslutils-pemagent.sql.in sslutils-pemagent.sql"/>
     <Message Text="Creating uninstall_sslutils.sql" />
     <Exec Command="copy /Y uninstall_sslutils.sql.in uninstall_sslutils.sql"/>
   </Target>
 
   <Target Name="install" DependsOnTargets="sslutils;sslutils-sql"  Condition="'$(INSTALL_PREFIX)' != ''">
     <ItemGroup>
-      <ContribFiles Include="sslutils.sql;uninstall_sslutils.sql;sslutils-pemagent.sql"/>
+      <ContribFiles Include="sslutils.sql;uninstall_sslutils.sql"/>
     </ItemGroup>
     <ItemGroup>
       <ExtensionFiles Include="sslutils--1.4.2.sql;sslutils--1.4.1--1.4.2.sql"/>
@@ -135,7 +134,6 @@
 
   <Target Name="clean">
     <Delete Files="sslutils.sql" />
-    <Delete Files="sslutils-pemagent.sql" />
     <Delete Files="uninstall_sslutils.sql" />
     <Delete Files="sslutils.dll" />
     <Delete Files="sslutils.exp" />

@@ -362,7 +362,6 @@
 					<distributionFileList>
 						<distributionFile origin="STAGING/share/sslutils.sql"/>
 						<distributionFile origin="STAGING/share/uninstall_sslutils.sql"/>
-						<distributionFile origin="STAGING/share/sslutils-pemagent.sql"/>
 					</distributionFileList>
 				</folder>
 				<!-- WIN : README.sslutils -->
