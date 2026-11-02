@@ -26,6 +26,58 @@ MSVC++ builds are also supported using the clean.bat and build.bat scripts:
   $PGDIR/share/extension
 
 
+Access control (1.4.2 and later)
+-------------------------------
+
+The seven openssl_* functions run as SECURITY DEFINER, owned by the
+cluster-wide sslutils_owner role. Installation or upgrade must be performed
+by a superuser. sslutils_owner is an INHERIT, NOLOGIN role with
+pg_read_server_files and pg_write_server_files on PostgreSQL 11 and later;
+it must not have members, administrative role attributes or other role
+memberships. Never grant membership in this role to agents.
+An existing role with unsafe attributes
+or members causes installation to fail rather than reusing it.
+
+PUBLIC cannot execute these functions. If pem_agent already exists, installation
+and upgrade grant it EXECUTE on all seven functions. Existing explicit grants
+are preserved. If pem_agent is created later, run the installed
+sslutils-pemagent.sql as a superuser in the extension's schema.
+For a non-public schema, grant pem_agent USAGE on that schema too; do not
+grant it CREATE. The functions use a fixed pg_catalog, pg_temp search_path.
+
+Upgrade existing installations with:
+
+    ALTER EXTENSION sslutils UPDATE TO '1.4.2';
+
+After migrating callers, remove direct file-role grants from agents, for example:
+
+    REVOKE pg_read_server_files, pg_write_server_files FROM pem_agent;
+
+Also remove any grants to individual agent logins or inherited roles, including
+pg_execute_server_program. These cluster-wide grants are not automatically
+revoked by a database-local extension upgrade. Agents must not be superusers.
+Agents can then call the same openssl_* signatures, but cannot use pg_read_file
+or pg_write_file to access server certificates, private keys or pg_hba.conf.
+The functions expose certificate operations, not general-purpose file reads.
+They retain their existing filename arguments and PGDATA restrictions.
+
+Revocation additionally requires the superuser-configured
+sslutils.revoke_certificate_crl_paths setting. Allow only dedicated CRL output
+directories, not PGDATA or directories containing configuration files: callers
+can choose the CRL output filename inside an allowed directory. Keep these
+directories and all certificate/key paths under administrator control.
+
+sslutils_owner is shared by databases and is not dropped by DROP EXTENSION or
+the legacy uninstall script. Drop it manually only after removing sslutils
+from all databases and revoking its file-role memberships.
+
+Validation
+----------
+
+With PostgreSQL 16 and its TAP test dependencies installed, run
+"make USE_PGXS=1 installcheck" as a non-root user after building and installing.
+The tests create isolated temporary clusters, not databases in a running server.
+
 Functions
 ---------
 
@@ -88,4 +140,3 @@ openssl_get_crt_expiry_date(text)
 Purpose: Get the certificate expiry date.
 Param1:  Path to certificate.
 Returns: end date of the certificate.
-

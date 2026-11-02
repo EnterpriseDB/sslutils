@@ -20,6 +20,7 @@
 #include "postgres.h"
 #include "miscadmin.h"
 #include <sys/file.h>
+#include <sys/stat.h>
 
 #include <openssl/err.h>
 #include <openssl/pem.h>
@@ -137,7 +138,7 @@ PG_FUNCTION_INFO_V1(openssl_get_crt_expiry_date);
 
 time_t ASN1_GetTimeT(const ASN1_TIME* time);
 
-#define PEM_SSLUTILS_VERSION "1.4.1"
+#define PEM_SSLUTILS_VERSION "1.4.2"
 
 /*
  * Global variable to hold the path of allowed revoke CRL directory
@@ -196,33 +197,47 @@ static bool validate_path_within_dedicated_dir(const char *path, char *dedicated
 {
 #ifdef WIN32
 	char resolved[MAX_PATH], datadir_resolved[MAX_PATH];
+	HANDLE path_handle, dir_handle;
+	DWORD path_len, dir_len;
 
-	// GetFullPathNameA returns 0 on failure.
-	if (GetFullPathNameA(path, MAX_PATH, resolved, NULL) == 0 ||
-		GetFullPathNameA(dedicated_dir, MAX_PATH, datadir_resolved, NULL) == 0) {
+	/* Resolve reparse points as well as ".." before checking containment. */
+	path_handle = CreateFileA(path, FILE_READ_ATTRIBUTES,
+		FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL,
+		OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
+	if (path_handle == INVALID_HANDLE_VALUE)
+		return false;
+
+	dir_handle = CreateFileA(dedicated_dir, FILE_READ_ATTRIBUTES,
+		FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL,
+		OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
+	if (dir_handle == INVALID_HANDLE_VALUE)
+	{
+		CloseHandle(path_handle);
 		return false;
 	}
 
-	size_t dir_len = strlen(datadir_resolved);
+	path_len = GetFinalPathNameByHandleA(path_handle, resolved, MAX_PATH, 0);
+	dir_len = GetFinalPathNameByHandleA(dir_handle, datadir_resolved, MAX_PATH, 0);
+	CloseHandle(path_handle);
+	CloseHandle(dir_handle);
+	if (path_len == 0 || path_len >= MAX_PATH || dir_len == 0 || dir_len >= MAX_PATH)
+		return false;
 
-	// Security fix/Edge case: Ensure datadir ends with a trailing backslash
-	// to prevent partial name matching (e.g., "C:\data" matching "C:\datadir")
-	if (dir_len > 0 && datadir_resolved[dir_len - 1] != '\\') {
-		// If there's room, add the trailing slash for an exact directory match
-		if (dir_len + 1 < MAX_PATH) {
-			strcat_s(datadir_resolved, MAX_PATH, "\\");
-			dir_len++;
-		}
-	}
-
-	// Windows paths are case-insensitive. _strnicmp compares up to 'dir_len' characters.
-	return _strnicmp(resolved, datadir_resolved, dir_len) == 0;
+	return _strnicmp(resolved, datadir_resolved, dir_len) == 0 &&
+		(datadir_resolved[dir_len - 1] == '\\' || resolved[dir_len] == '\\' ||
+		 resolved[dir_len] == '\0');
 #else
 	char resolved[PATH_MAX], datadir_resolved[PATH_MAX];
+	size_t dir_len;
+
 	if (!realpath(path, resolved) || !realpath(dedicated_dir, datadir_resolved))
 		return false;
 
-	return strncmp(resolved, datadir_resolved, strlen(datadir_resolved)) == 0;
+	dir_len = strlen(datadir_resolved);
+
+	return strncmp(resolved, datadir_resolved, dir_len) == 0 &&
+		(datadir_resolved[dir_len - 1] == '/' || resolved[dir_len] == '/' ||
+		 resolved[dir_len] == '\0');
 #endif
 }
 
@@ -920,6 +935,8 @@ openssl_csr_to_crt(PG_FUNCTION_ARGS)
 		goto out;
 	}
 
+	check_read_server_file_permission();
+
 	/* Get the CA private key */
 	bio_key = BIO_new_file(text_to_cstring(ca_key_file_path), "r");
 	if (!bio_key)
@@ -1186,6 +1203,8 @@ openssl_rsa_generate_crl(PG_FUNCTION_ARGS)
 		goto out;
 	}
 
+	check_read_server_file_permission();
+
 	/* Get the CA private key */
 	bio_key = BIO_new_file(text_to_cstring(ca_key_file_path), "r");
 	if (!bio_key)
@@ -1386,8 +1405,8 @@ static bool validate_path_within_allowed_guc(char* guc_string, const char* targe
 
 	rawstring = pstrdup(guc_string);
 
-	// It handles case-insensitivity and whitespace automatically
-	if (!SplitIdentifierString(rawstring, ',', &elemlist))
+	/* Paths must not be lowercased or truncated to SQL identifier length. */
+	if (!SplitDirectoriesString(rawstring, ',', &elemlist))
 	{
 		pfree(rawstring);
 		return false;
@@ -1396,11 +1415,27 @@ static bool validate_path_within_allowed_guc(char* guc_string, const char* targe
 	foreach(l, elemlist)
 	{
 		char* dir = (char*) lfirst(l);
-#ifdef WIN32
-		if (_strnicmp(target, dir, strlen(dir)) == 0)
-#else
-		if (strncmp(target, dir, strlen(dir)) == 0)
-#endif
+		char* parent = pstrdup(target);
+		struct stat st;
+		bool allowed;
+
+		/* A new CRL has no realpath yet; resolve its existing parent instead. */
+		get_parent_directory(parent);
+		if (parent[0] == '\0')
+		{
+			pfree(parent);
+			parent = pstrdup(".");
+		}
+		allowed = validate_path_within_dedicated_dir(parent, dir);
+		if (allowed)
+		{
+			if (lstat(target, &st) == 0)
+				allowed = validate_path_within_dedicated_dir(target, dir);
+			else if (errno != ENOENT)
+				allowed = false;
+		}
+		pfree(parent);
+		if (allowed)
 		{
 			pfree(rawstring);
 			list_free(elemlist);
@@ -1865,4 +1900,3 @@ out:
 
 	PG_RETURN_TIMESTAMPTZ(timeTZ);
 }
-
