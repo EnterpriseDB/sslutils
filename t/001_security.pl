@@ -15,6 +15,8 @@ $node->append_conf('postgresql.conf',
 $node->start;
 $node->safe_psql('postgres', q{
     CREATE ROLE pem_agent LOGIN;
+    CREATE ROLE t_agent_test LOGIN;
+    GRANT pem_agent TO t_agent_test;
     CREATE ROLE unrelated;
     CREATE EXTENSION sslutils;
 });
@@ -22,7 +24,8 @@ $node->safe_psql('postgres', q{
 sub agent_sql
 {
     my ($sql) = @_;
-    return $node->safe_psql('postgres', "SET ROLE pem_agent; $sql");
+    return $node->safe_psql('postgres', $sql,
+        extra_params => ['-h', '127.0.0.1', '-U', 't_agent_test']);
 }
 
 sub denied
@@ -215,6 +218,7 @@ $node->safe_psql('postgres', q{
     DROP DATABASE schema_test;
     DROP DATABASE legacy_test;
     DROP EXTENSION sslutils;
+    DROP ROLE t_agent_test;
     DROP ROLE pem_agent;
     ALTER ROLE sslutils_owner LOGIN;
 });
@@ -241,10 +245,17 @@ $node->safe_psql('postgres', q{
     REVOKE pg_execute_server_program FROM sslutils_owner;
     CREATE EXTENSION sslutils;
     CREATE ROLE pem_agent LOGIN;
+    CREATE ROLE t_agent_test LOGIN;
+    GRANT pem_agent TO t_agent_test;
 });
 $node->safe_psql('postgres', slurp_file("$sharedir/extension/sslutils-pemagent.sql"));
 like(agent_sql(q{SELECT openssl_rsa_generate_key(2048)}),
     qr/BEGIN PRIVATE KEY/, 'grant script supports agents created after installation');
+
+is($node->safe_psql('postgres', q{
+    SELECT has_function_privilege('t_agent_test',
+        'public.openssl_rsa_generate_key(integer)', 'EXECUTE')
+}), 't', 'login inherits function execution through pem_agent membership');
 
 $node->stop;
 done_testing();
