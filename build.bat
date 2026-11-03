@@ -29,6 +29,7 @@ GOTO build
  IF NOT EXIST "sslutils.dll" SET PPSP_BUILD_ERROR="Failed to generate the sslutils.dll" && GOTO error
  IF NOT EXIST "sslutils.sql" SET PPSP_BUILD_ERROR="Failed to generate the sslutils.sql" && GOTO error
  IF NOT EXIST "uninstall_sslutils.sql" SET PPSP_BUILD_ERROR="Failed to generate the uninstall_sslutils.sql" && GOTO error
+ IF NOT EXIST "sslutils-pemagent.sql" SET PPSP_BUILD_ERROR="Failed to generate the sslutils-pemagent.sql" && GOTO error
  GOTO end
 
 :use_msbuild
@@ -37,6 +38,7 @@ GOTO build
  IF NOT EXIST "sslutils.dll" SET PPSP_BUILD_ERROR="Failed to generate the sslutils.dll" && GOTO error
  IF NOT EXIST "sslutils.sql" SET PPSP_BUILD_ERROR="Failed to generate the sslutils.sql" && GOTO error
  IF NOT EXIST "uninstall_sslutils.sql" SET PPSP_BUILD_ERROR="Failed to generate the uninstall_sslutils.sql" && GOTO error
+ IF NOT EXIST "sslutils-pemagent.sql" SET PPSP_BUILD_ERROR="Failed to generate the sslutils-pemagent.sql" && GOTO error
  GOTO end
 
 :error

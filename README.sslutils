@@ -25,6 +25,11 @@ MSVC++ builds are also supported using the clean.bat and build.bat scripts:
 - Copy sslutils.dll into $PGDIR/lib and *.sql and sslutils.control into 
   $PGDIR/share/extension
 
+Both builds generate sslutils-pemagent.sql from sslutils-pemagent.sql.in before
+packaging. PGXS installs it into the PostgreSQL share/extension directory.
+The Windows build stages it in share alongside sslutils.sql; the Windows
+installer includes it in the PostgreSQL share directory.
+
 
 Access control (1.4.2 and later)
 -------------------------------
