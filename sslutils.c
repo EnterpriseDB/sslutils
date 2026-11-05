@@ -47,20 +47,8 @@
 #include "varatt.h"
 #endif
 
-// To call functions like is_member_of_role()
 #if PG_VERSION_NUM >= 110000
 #include "utils/errcodes.h"
-#include "utils/acl.h"
-#include "catalog/pg_authid.h"
-
-// Compatibility layer for PostgreSQL < 14
-#if PG_VERSION_NUM < 140000 && defined(DEFAULT_ROLE_READ_SERVER_FILES)
-#define ROLE_PG_READ_SERVER_FILES DEFAULT_ROLE_READ_SERVER_FILES
-#endif
-#if PG_VERSION_NUM < 140000 && defined(DEFAULT_ROLE_WRITE_SERVER_FILES)
-#define ROLE_PG_WRITE_SERVER_FILES DEFAULT_ROLE_WRITE_SERVER_FILES
-#endif
-
 #endif
 
 
@@ -247,37 +235,6 @@ static bool validate_path_within_dedicated_dir(const char *path, char *dedicated
 static bool validate_path_within_datadir(const char *path)
 {
 	return validate_path_within_dedicated_dir(path, DataDir);
-}
-
-/*
- * On PostgreSQL 11+, file access from SQL is gated by the pg_read_server_files and pg_write_server_files roles.
- * This function is to check if the user has the permisson of pg_read_server_files.
- */
-static void check_read_server_file_permission()
-{
-#if PG_VERSION_NUM >= 110000
-	if (!is_member_of_role(GetUserId(), ROLE_PG_READ_SERVER_FILES))
-	{
-		ereport(ERROR,
-			(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
-			errmsg("must be a member of pg_read_server_files to use this function")));
-	}
-#endif
-}
-
-/*
- * This function is to check if the user has the permisson of pg_write_server_files.
- */
-static void check_write_server_file_permission()
-{
-#if PG_VERSION_NUM >= 110000
-	if (!is_member_of_role(GetUserId(), ROLE_PG_WRITE_SERVER_FILES))
-	{
-		ereport(ERROR,
-			(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
-			errmsg("must be a member of pg_write_server_files to use this function")));
-	}
-#endif
 }
 
 /*
@@ -906,8 +863,6 @@ openssl_csr_to_crt(PG_FUNCTION_ARGS)
 			goto out;
 		}
 
-		check_read_server_file_permission();
-
 		/* Get the CA certificate */
 		bio_cert_file = BIO_new_file(text_to_cstring(ca_cert_file_path), "r");
 		if (!bio_cert_file)
@@ -934,8 +889,6 @@ openssl_csr_to_crt(PG_FUNCTION_ARGS)
 		err = "PATH_NOT_IN_PGDATA";
 		goto out;
 	}
-
-	check_read_server_file_permission();
 
 	/* Get the CA private key */
 	bio_key = BIO_new_file(text_to_cstring(ca_key_file_path), "r");
@@ -1174,8 +1127,6 @@ openssl_rsa_generate_crl(PG_FUNCTION_ARGS)
 			goto out;
 		}
 
-		check_read_server_file_permission();
-
 		/* Get the CA crl */
 		bio_cert_file = BIO_new_file(text_to_cstring(ca_cert_file_path), "r");
 		if (!bio_cert_file)
@@ -1202,8 +1153,6 @@ openssl_rsa_generate_crl(PG_FUNCTION_ARGS)
 		err = "PATH_NOT_IN_PGDATA";
 		goto out;
 	}
-
-	check_read_server_file_permission();
 
 	/* Get the CA private key */
 	bio_key = BIO_new_file(text_to_cstring(ca_key_file_path), "r");
@@ -1346,8 +1295,6 @@ openssl_is_crt_expire_on(PG_FUNCTION_ARGS)
 		err = "PATH_NOT_IN_PGDATA";
 		goto out;
 	}
-
-	check_read_server_file_permission();
 
 	fp_cert_file = fopen(text_to_cstring(cert_file_path), "r");
 	if (!fp_cert_file)
@@ -1494,9 +1441,6 @@ openssl_revoke_certificate(PG_FUNCTION_ARGS)
 	X509_REVOKED *r = NULL;
 	ASN1_INTEGER *tmpser = NULL;
 	int retVal = 0;
-
-	check_read_server_file_permission();
-	check_write_server_file_permission();
 
 	if (PG_ARGISNULL(0) || PG_ARGISNULL(1))
 	{
@@ -1860,8 +1804,6 @@ openssl_get_crt_expiry_date(PG_FUNCTION_ARGS)
 		err = "PATH_NOT_IN_PGDATA";
 		goto out;
 	}
-
-	check_read_server_file_permission();
 
 	bio_cert_file = BIO_new_file(text_to_cstring(cert_file_path), "r");
 	if (!bio_cert_file)
