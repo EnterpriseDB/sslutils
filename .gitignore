@@ -1,5 +1,9 @@
 /sslutils.sql
 /uninstall_sslutils.sql
+/sslutils-pemagent.sql
+/tmp_check/
+/sslutils.o
+/sslutils.bc
 
 # *nix shared library
 /sslutils.so
