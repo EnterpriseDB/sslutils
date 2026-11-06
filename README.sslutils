@@ -50,6 +50,18 @@ sslutils-pemagent.sql as a superuser in the extension's schema.
 For a non-public schema, grant pem_agent USAGE on that schema too; do not
 grant it CREATE. The functions use a fixed pg_catalog, pg_temp search_path.
 
+EXECUTE privileges and path validation are the access boundary; the functions
+do not require callers to hold the server-file roles. A login inheriting
+pem_agent's EXECUTE privileges can perform certificate operations on eligible
+files under DataDir (PGDATA), including inspecting certificate expiry and using
+a CA certificate and private key there to sign certificates or generate CRLs.
+This is intended PEM functionality, not a general-purpose file-read interface;
+the functions do not return the contents of existing private-key files.
+Path confinement does not isolate different agents or CAs within DataDir.
+Grant pem_agent membership and explicit function access only to callers trusted
+with these operations, and do not place unrelated CA keys within the permitted
+paths if those callers must not use them.
+
 Upgrade existing installations with:
 
     ALTER EXTENSION sslutils UPDATE TO '1.4.2';
